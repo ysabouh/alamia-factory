@@ -1,0 +1,405 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222.2 47.4% 11.2%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 17% 93%;
+    --muted-foreground: 215 15% 45%;
+    --primary: 203 89% 53%;
+    --primary-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214 20% 88%;
+    --input: 214 20% 88%;
+    --ring: 203 89% 53%;
+    --radius: 0.75rem;
+    --radius-sm: 0.5rem;
+    --radius-lg: 1rem;
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-md: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.5rem;
+    --status-success: 16 185 129;
+    --status-warning: 245 158 11;
+    --status-critical: 239 68 68;
+    --status-info: 14 165 233;
+    --font-industrial: "Segoe UI", "Tahoma", sans-serif;
+    --font-telemetry: "Cascadia Code", "Consolas", monospace;
+    --industrial-bg-0: #eef5ff;
+    --industrial-bg-1: #f8fbff;
+    --industrial-bg-2: #ffffff;
+    --industrial-border: rgba(148, 163, 184, 0.24);
+    --industrial-cyan: rgba(34, 211, 238, 1);
+    --industrial-cyan-glow: rgba(34, 211, 238, 0.18);
+    --industrial-red-glow: rgba(239, 68, 68, 0.22);
+    --industrial-green-glow: rgba(34, 197, 94, 0.18);
+  }
+
+  .dark {
+    --background: 222.2 47.4% 6.5%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 47.4% 8.5%;
+    --card-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --primary: 189 94% 43%;
+    --primary-foreground: 222.2 47.4% 6.5%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 189 94% 43%;
+    --industrial-bg-0: #020617;
+    --industrial-bg-1: #07111f;
+    --industrial-bg-2: #0b1628;
+    --industrial-border: rgba(148, 163, 184, 0.16);
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-industrial);
+    background:
+      radial-gradient(circle at top left, rgba(14, 165, 233, 0.12), transparent 28rem),
+      radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.08), transparent 24rem),
+      linear-gradient(120deg, rgba(14, 165, 233, 0.04), transparent 38%, rgba(56, 189, 248, 0.02)),
+      hsl(var(--background));
+  }
+}
+
+@layer utilities {
+  .factory-grid {
+    background-image:
+      linear-gradient(rgba(34, 211, 238, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34, 211, 238, 0.08) 1px, transparent 1px),
+      radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.08), transparent 18rem);
+    background-size: 32px 32px;
+  }
+
+  .erp-card {
+    border: 1px solid hsl(var(--border));
+    background:
+      linear-gradient(180deg, hsl(var(--card)), color-mix(in srgb, hsl(var(--card)) 92%, #0ea5e9 8%));
+    box-shadow:
+      0 10px 30px rgba(2, 8, 23, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+
+  .ds-page {
+    @apply space-y-6 md:space-y-8;
+  }
+
+  .ds-section-title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+  }
+
+  .ds-body {
+    font-size: var(--font-size-sm);
+    line-height: 1.6;
+  }
+
+  .ds-form-grid {
+    @apply grid gap-4 md:grid-cols-2;
+  }
+
+  .ds-input-base {
+    @apply h-10 rounded-lg border border-input bg-background px-3 text-sm shadow-sm transition-colors;
+  }
+
+  .status-success {
+    color: rgb(var(--status-success));
+  }
+
+  .status-warning {
+    color: rgb(var(--status-warning));
+  }
+
+  .status-critical {
+    color: rgb(var(--status-critical));
+  }
+
+  .status-info {
+    color: rgb(var(--status-info));
+  }
+
+  .dark .erp-card {
+    box-shadow:
+      0 18px 52px rgba(2, 8, 23, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .erp-hero {
+    background:
+      radial-gradient(circle at 12% 0%, rgba(14, 165, 233, 0.2), transparent 34rem),
+      linear-gradient(135deg, color-mix(in srgb, hsl(var(--card)) 92%, #0ea5e9 8%), hsl(var(--card)));
+  }
+
+  .industrial-shell {
+    background:
+      linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(2, 6, 23, 0.96)),
+      radial-gradient(circle at 20% 10%, rgba(34, 211, 238, 0.12), transparent 28rem);
+  }
+
+  .scada-panel {
+    position: relative;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    background:
+      linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(2, 6, 23, 0.96)),
+      linear-gradient(90deg, rgba(34, 211, 238, 0.06), transparent);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 18px 70px rgba(0, 0, 0, 0.35),
+      0 0 42px rgba(34, 211, 238, 0.08);
+  }
+
+  .industrial-module {
+    background:
+      linear-gradient(180deg, rgba(11, 22, 40, 0.96), rgba(2, 6, 23, 0.98)),
+      radial-gradient(circle at top right, rgba(34, 211, 238, 0.09), transparent 22rem);
+    border: 1px solid var(--industrial-border);
+    box-shadow:
+      0 22px 80px rgba(0, 0, 0, 0.42),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  /** رأس صفحة أوامر الإنتاج — نفس منطق البطاقات الصناعية، مع لمسة سماوية خفيفة */
+  .mes-overview-hero {
+    border: 1px solid hsl(var(--border));
+    background:
+      radial-gradient(ellipse 75% 55% at 100% 0%, rgba(14, 165, 233, 0.14), transparent 52%),
+      radial-gradient(ellipse 55% 45% at 0% 100%, rgba(56, 189, 248, 0.09), transparent 48%),
+      linear-gradient(180deg, hsl(var(--card)), color-mix(in srgb, hsl(var(--card)) 88%, #0ea5e9 12%));
+    box-shadow:
+      0 12px 40px rgba(14, 165, 233, 0.08),
+      0 10px 30px rgba(2, 8, 23, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  }
+
+  .telemetry-text {
+    font-family: var(--font-telemetry);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .scada-panel::before {
+    animation: scan-sweep 5s ease-in-out infinite;
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.18), transparent);
+    opacity: 0.32;
+    transform: translateX(120%);
+    width: 55%;
+  }
+
+  .scanlines {
+    position: relative;
+  }
+
+  .scanlines::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.025),
+      rgba(255, 255, 255, 0.025) 1px,
+      transparent 1px,
+      transparent 7px
+    );
+    mix-blend-mode: screen;
+    opacity: 0.35;
+  }
+
+  .cyan-glow {
+    box-shadow:
+      0 0 0 1px rgba(34, 211, 238, 0.32),
+      0 0 34px rgba(34, 211, 238, 0.28),
+      0 0 90px rgba(34, 211, 238, 0.09),
+      inset 0 0 34px rgba(34, 211, 238, 0.09);
+  }
+
+  .danger-glow {
+    box-shadow:
+      0 0 0 1px rgba(239, 68, 68, 0.35),
+      0 0 40px rgba(239, 68, 68, 0.3),
+      0 0 90px rgba(239, 68, 68, 0.12),
+      inset 0 0 34px rgba(239, 68, 68, 0.08);
+  }
+
+  .pulse-live {
+    animation: pulse-live 1.8s ease-in-out infinite;
+  }
+
+  .status-glow-ring {
+    animation: status-ring 2.2s ease-in-out infinite;
+    box-shadow:
+      0 0 0 0 rgba(14, 165, 233, 0.35),
+      0 0 25px rgba(14, 165, 233, 0.25);
+  }
+
+  .blink-alarm {
+    animation: blink-alarm 1s steps(2, end) infinite;
+  }
+
+  .hover-lift {
+    transition:
+      transform 180ms ease,
+      border-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .hover-lift:hover {
+    border-color: rgba(34, 211, 238, 0.32);
+    box-shadow:
+      0 24px 80px rgba(0, 0, 0, 0.44),
+      0 0 34px rgba(34, 211, 238, 0.12);
+    transform: translateY(-2px);
+  }
+
+  .flow-line {
+    overflow: hidden;
+    position: relative;
+  }
+
+  .flow-line::after {
+    animation: material-flow 1.35s linear infinite;
+    background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 1), rgba(103, 232, 249, 1), transparent);
+    content: "";
+    height: 3px;
+    position: absolute;
+    top: 50%;
+    width: 45%;
+    filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.95));
+  }
+
+  .sensor-bar {
+    background:
+      linear-gradient(90deg, rgba(34, 211, 238, 0.95), rgba(14, 165, 233, 0.45)),
+      rgba(15, 23, 42, 0.9);
+    box-shadow: 0 0 16px rgba(34, 211, 238, 0.5);
+  }
+
+  .machine-rotor {
+    animation: rotor-spin 2.8s linear infinite;
+  }
+
+  .machine-vibration {
+    animation: machine-vibration 1.6s ease-in-out infinite;
+  }
+
+  .neon-border {
+    position: relative;
+  }
+
+  .neon-border::before {
+    animation: border-pulse 2.6s ease-in-out infinite;
+    border: 1px solid rgba(34, 211, 238, 0.42);
+    border-radius: inherit;
+    content: "";
+    inset: -1px;
+    pointer-events: none;
+    position: absolute;
+  }
+}
+
+@keyframes pulse-live {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+
+@keyframes material-flow {
+  from {
+    right: -35%;
+  }
+  to {
+    right: 100%;
+  }
+}
+
+@keyframes scan-sweep {
+  0% {
+    transform: translateX(170%);
+  }
+  45%,
+  100% {
+    transform: translateX(-220%);
+  }
+}
+
+@keyframes rotor-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes machine-vibration {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes border-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes blink-alarm {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes status-ring {
+  0%,
+  100% {
+    transform: scale(0.96);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
