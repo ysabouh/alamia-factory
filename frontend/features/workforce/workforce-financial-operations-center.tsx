@@ -53,8 +53,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { LiveDashboard, MachineSnapshot } from "@/types/factory";
+import type { LiveDashboard } from "@/types/factory";
 
+import { opsEmployeesFromDashboard } from "./ops-employees-from-dashboard";
 import { SmartLeaveVacationModule } from "./smart-leave-vacation-module";
 import type { Attendance, OpsEmployee } from "./workforce-models";
 
@@ -67,75 +68,14 @@ const DEPTS = [
   { key: "maint", name: "الصيانة", icon: Activity },
   { key: "wh", name: "المستودعات", icon: Truck },
   { key: "qa", name: "الجودة", icon: ShieldCheck },
-  { key: "acc", name: "المحاسبة", icon: Banknote }
+  { key: "acc", name: "المحاسبة", icon: Banknote },
+  { key: "adm", name: "إداري", icon: Building2 }
 ] as const;
 
 function seedFromStr(s: string, max: number) {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
   return h % max;
-}
-
-function hallFromMachine(m: MachineSnapshot): string {
-  if (m.type === "injection") return "قاعة الحقن";
-  if (m.type === "blow_molding") return "قاعة النفخ";
-  return "التغليف";
-}
-
-function buildEmployees(dashboard: LiveDashboard): OpsEmployee[] {
-  const { machines, kpis } = dashboard;
-  const rows: OpsEmployee[] = [];
-  const seen = new Set<string>();
-
-  const push = (name: string, role: string, dept: string, m: MachineSnapshot | null, kind: "op" | "tech") => {
-    if (!name || seen.has(name)) return;
-    seen.add(name);
-    const id = `e-${name}`;
-    const effBase = kind === "op" ? 78 + seedFromStr(name, 18) : 72 + seedFromStr(name + "t", 20);
-    const wasteAdj = kpis.wasteRate > 4 ? -4 : 2;
-    rows.push({
-      id,
-      name,
-      initials: name
-        .split(/\s/)
-        .map((x) => x[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase() || name.slice(0, 2),
-      role,
-      department: dept,
-      hall: m ? hallFromMachine(m) : dept === "الصيانة" ? "جميع القاعات" : "إداري",
-      shift: seedFromStr(name, 2) === 0 ? "صباحي" : seedFromStr(name, 2) === 1 ? "مسائي" : "ليلي",
-      attendance: (["present", "present", "present", "late", "leave", "absent"] as Attendance[])[seedFromStr(name, 6)],
-      performance: Math.min(99, effBase + seedFromStr(name + "p", 12)),
-      reliability: Math.min(100, 80 + seedFromStr(name + "r", 18)),
-      productionEff: Math.min(98, effBase + wasteAdj),
-      bonusPoints: 200 + seedFromStr(name + "b", 400),
-      violations: seedFromStr(name + "v", 4),
-      machineCode: m && kind === "op" ? m.code : kind === "tech" && m ? m.code : null,
-      avatarHue: seedFromStr(name, 360)
-    });
-  };
-
-  machines.forEach((m) => {
-    if (m.operator) push(m.operator, "مشغّل ماكينة", "الإنتاج", m, "op");
-    if (m.technician) push(m.technician, "فني صيانة", "الصيانة", m, "tech");
-  });
-
-  const extra: Array<[string, string, string]> = [
-    ["ليلى المالكي", "مشرفة جودة", "الجودة"],
-    ["ناصر الزهراني", "أمين مستودع", "المستودعات"],
-    ["هند الغامدي", "محاسبة تكاليف", "المحاسبة"],
-    ["رامي العتيبي", "مخطط إنتاج", "الإنتاج"],
-    ["منى الشهري", "مراقبة سلامة", "الإنتاج"],
-    ["خالد باحميد", "مشغّل خط", "الإنتاج"]
-  ];
-  extra.forEach(([n, r, d]) => {
-    const m = machines[seedFromStr(n, machines.length)] ?? null;
-    push(n, r, d, m, "op");
-  });
-
-  return rows.sort((a, b) => b.performance - a.performance);
 }
 
 function financeModel(dashboard: LiveDashboard) {
@@ -146,7 +86,12 @@ function financeModel(dashboard: LiveDashboard) {
   const energyCost = Math.round(4200 + k.machineUtilization * 38);
   const maintCost = Math.round(1800 + k.openMaintenanceTickets * 650);
   const wasteCost = Math.round(k.producedWeightKgToday * (k.wasteRate / 100) * 12);
-  const laborDaily = Math.round(12400 + produced * 0.08);
+  let laborDaily = Math.round(12400 + produced * 0.08);
+  const roster = dashboard.workforceRoster ?? [];
+  if (roster.length > 0) {
+    const baseDay = roster.reduce((s, e) => s + Number(e.basicSalary ?? 0), 0) / 26;
+    laborDaily = Math.round(baseDay + produced * 0.06);
+  }
   const payrollMonth = Math.round(laborDaily * 26 * 1.08);
   const logistics = Math.round(2100 + seedFromStr("log", 400));
   const opex = materialCost + energyCost + maintCost + laborDaily + logistics + wasteCost;
@@ -189,7 +134,7 @@ export function WorkforceFinancialOperationsCenter({ dashboard }: Props) {
   const [deptFilter, setDeptFilter] = useState<string | "all">("all");
   const [attFilter, setAttFilter] = useState<Attendance | "all">("all");
 
-  const employees = useMemo(() => buildEmployees(dashboard), [dashboard]);
+  const employees = useMemo(() => opsEmployeesFromDashboard(dashboard), [dashboard]);
   const fin = useMemo(() => financeModel(dashboard), [dashboard]);
 
   const presentN = employees.filter((e) => e.attendance === "present").length;
@@ -216,7 +161,10 @@ export function WorkforceFinancialOperationsCenter({ dashboard }: Props) {
   });
 
   const payrollPreview = employees.map((e) => {
-    const base = 4200 + seedFromStr(e.id, 2800);
+    const base =
+      typeof e.basicSalaryMonthly === "number"
+        ? Math.round(e.basicSalaryMonthly * 6.5)
+        : 4200 + seedFromStr(e.id, 2800);
     const ot = seedFromStr(e.id + "ot", 800);
     const prodBonus = Math.round(e.productionEff * 12);
     const perfBonus = Math.round(e.performance * 8);
@@ -591,7 +539,7 @@ function EmployeeCard({ emp, index }: { emp: OpsEmployee; index: number }) {
       <div className="grid grid-cols-2 gap-2 text-[11px]">
         <div>
           <p className="text-muted-foreground">القسم</p>
-          <p className="font-medium">{emp.department}</p>
+          <p className="font-medium">{emp.departmentDetail ?? emp.department}</p>
         </div>
         <div>
           <p className="text-muted-foreground">القاعة</p>

@@ -1,0 +1,6 @@
+- Always use TypeScript
+- Use clean architecture
+- Use reusable components
+- Follow RTL support
+- Avoid generic dashboards
+- Use industrial design language

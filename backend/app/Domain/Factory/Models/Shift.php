@@ -8,6 +8,7 @@ class Shift extends Model
 {
     protected $fillable = [
         'name',
+        'code',
         'starts_at',
         'ends_at',
         'is_active',

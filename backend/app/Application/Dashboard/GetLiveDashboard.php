@@ -2,6 +2,7 @@
 
 namespace App\Application\Dashboard;
 
+use App\Application\Workforce\BuildWorkforceRoster;
 use App\Domain\Factory\Models\Alert;
 use App\Domain\Factory\Models\Machine;
 use App\Domain\Factory\Models\MaintenanceTicket;
@@ -9,9 +10,14 @@ use App\Domain\Factory\Models\ProductionEntry;
 use App\Domain\Factory\Models\StockLevel;
 use App\Domain\Factory\Models\WasteEntry;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class GetLiveDashboard
 {
+    public function __construct(
+        private BuildWorkforceRoster $buildWorkforceRoster,
+    ) {}
+
     public function handle(): array
     {
         $today = Carbon::today();
@@ -27,6 +33,8 @@ class GetLiveDashboard
         $wasteWeight = (float) $waste->sum('weight_kg');
         $totalWeight = $producedWeight + $wasteWeight;
 
+        $canViewWorkforce = Auth::check() && Auth::user()->can('workforce.view');
+
         return [
             'kpis' => [
                 'producedPiecesToday' => $producedPieces,
@@ -40,6 +48,7 @@ class GetLiveDashboard
             ],
             'machines' => $machines->map(fn (Machine $machine): array => $this->machineSnapshot($machine, $today))->values(),
             'productionTrend' => $this->productionTrend($today),
+            'workforceRoster' => $canViewWorkforce ? $this->buildWorkforceRoster->handle() : [],
             'alerts' => Alert::query()
                 ->whereNull('resolved_at')
                 ->latest()

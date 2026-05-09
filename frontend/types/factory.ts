@@ -31,10 +31,44 @@ export interface ProductionTrendPoint {
   waste: number;
 }
 
+export type WorkforceAttendance = "present" | "late" | "absent" | "leave";
+
+/** Live roster emitted by Laravel when caller has workforce.view permission. */
+export interface WorkforceRosterEntry {
+  id: number;
+  employeeNumber: string;
+  employeeCode: string;
+  fullName: string;
+  initials: string;
+  role: string;
+  department: string;
+  hall: string;
+  shift: string;
+  shiftCode?: string | null;
+  attendance: WorkforceAttendance;
+  employmentStatusCode?: string | null;
+  employmentStatusLabel?: string | null;
+  performance: number;
+  reliability: number;
+  productionEff: number;
+  safetyScore: number;
+  bonusPoints: number;
+  violations: number;
+  machineCode: string | null;
+  avatarHue: number;
+  /** Optional profile image URL from HR */
+  avatarUrl?: string | null;
+  basicSalary: number;
+  overtimeHourRate: number;
+  annualLeaveBalance: number;
+}
+
 export interface LiveDashboard {
   kpis: DashboardKpis;
   machines: MachineSnapshot[];
   productionTrend: ProductionTrendPoint[];
+  /** Populated server-side after auth; falls back client-side synthesis when missing. */
+  workforceRoster?: WorkforceRosterEntry[];
   alerts: Array<{
     id: number;
     severity: "info" | "warning" | "critical";

@@ -1,0 +1,142 @@
+// Introspection target: Laravel MySQL schema (backend/database/migrations/*workforce* + factory core).
+// Run Laravel migrations first, then: npx prisma generate
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Hall {
+  id          BigInt   @id @default(autoincrement())
+  name        String   @db.VarChar(255)
+  code        String   @unique @db.VarChar(255)
+  hallType    String?  @map("hall_type") @db.VarChar(255)
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  departments Department[]
+  employees   Employee[]
+
+  @@map("halls")
+}
+
+model Department {
+  id          BigInt   @id @default(autoincrement())
+  hallId      BigInt?  @map("hall_id")
+  name        String   @db.VarChar(255)
+  code        String   @unique @db.VarChar(255)
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  hall      Hall?      @relation(fields: [hallId], references: [id], onDelete: SetNull)
+  employees Employee[]
+
+  @@index([hallId])
+  @@map("departments")
+}
+
+model JobRole {
+  id          BigInt   @id @default(autoincrement())
+  name        String   @db.VarChar(255)
+  code        String   @unique @db.VarChar(255)
+  roleLevel   Int      @default(1) @map("role_level") @db.UnsignedTinyInt
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  employees Employee[]
+
+  @@map("job_roles")
+}
+
+model Shift {
+  id        BigInt   @id @default(autoincrement())
+  name      String   @db.VarChar(255)
+  code      String?  @unique @db.VarChar(255)
+  startTime DateTime @map("starts_at") @db.Time(0)
+  endTime   DateTime @map("ends_at") @db.Time(0)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  employees Employee[]
+
+  @@map("shifts")
+}
+
+/// Maps Laravel `employment_statuses` table (keeps Prisma model name `EmployeeStatus` for the API).
+model EmployeeStatus {
+  id        BigInt   @id @default(autoincrement())
+  name      String   @db.VarChar(255)
+  code      String   @unique @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  employees Employee[]
+
+  @@map("employment_statuses")
+}
+
+model Employee {
+  id        BigInt  @id @default(autoincrement())
+  code      String  @unique @db.VarChar(255)
+  name      String  @db.VarChar(255)
+  jobTitle  String? @map("job_title") @db.VarChar(255)
+  /// Legacy free-text department label (distinct from relational `departmentId`).
+  legacyDepartmentLabel String? @map("department") @db.VarChar(255)
+
+  employeeNumber String? @unique @map("employee_number") @db.VarChar(255)
+  firstName      String? @map("first_name") @db.VarChar(255)
+  lastName       String? @map("last_name") @db.VarChar(255)
+
+  gender           String?   @db.VarChar(40)
+  birthDate        DateTime? @map("birth_date") @db.Date
+  phone            String?   @db.VarChar(255)
+  emergencyPhone   String?   @map("emergency_phone") @db.VarChar(255)
+  email            String?   @db.VarChar(255)
+  nationalId       String?   @map("national_id") @db.VarChar(255)
+  address          String?   @db.Text
+  hireDate         DateTime? @map("hire_date") @db.Date
+
+  hallId       BigInt? @map("hall_id")
+  departmentId BigInt? @map("department_id")
+  jobRoleId    BigInt? @map("job_role_id")
+  shiftId      BigInt? @map("shift_id")
+
+  employeeStatusId BigInt? @map("employment_status_id")
+
+  basicSalary      Decimal @default(0) @map("basic_salary") @db.Decimal(14, 2)
+  overtimeHourRate Decimal @default(0) @map("overtime_hour_rate") @db.Decimal(10, 2)
+  performanceScore Decimal @default(0) @map("performance_score") @db.Decimal(7, 2)
+  reliabilityScore Decimal @default(0) @map("reliability_score") @db.Decimal(7, 2)
+  safetyScore        Decimal @default(0) @map("safety_score") @db.Decimal(7, 2)
+
+  annualLeaveBalance Int     @default(0) @map("annual_leave_balance")
+  profileImage       String? @map("profile_image") @db.VarChar(255)
+  notes              String? @db.Text
+  isActive           Boolean @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  hall             Hall?            @relation(fields: [hallId], references: [id], onDelete: SetNull)
+  department       Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  jobRole          JobRole?         @relation(fields: [jobRoleId], references: [id], onDelete: SetNull)
+  shift            Shift?           @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  employeeStatus   EmployeeStatus?  @relation(fields: [employeeStatusId], references: [id], onDelete: SetNull)
+
+  @@index([departmentId], map: "employees_department_idx")
+  @@index([shiftId], map: "employees_shift_idx")
+  @@index([jobRoleId], map: "employees_job_role_idx")
+  @@index([employeeStatusId], map: "employees_employment_status_idx")
+  @@index([hallId], map: "employees_hall_idx")
+  @@index([email])
+  @@map("employees")
+}
