@@ -2,6 +2,7 @@
 
 namespace App\Domain\Factory\Models;
 
+use App\Domain\Factory\Models\Concerns\TracksAuditorColumns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Employee extends Model
 {
+    use TracksAuditorColumns;
+
     protected $fillable = [
         'code',
         'employee_number',
@@ -32,6 +35,7 @@ class Employee extends Model
         'employment_status_id',
         'basic_salary',
         'overtime_hour_rate',
+        'overtime_friday_hour_rate',
         'performance_score',
         'reliability_score',
         'safety_score',
@@ -43,16 +47,17 @@ class Employee extends Model
 
     protected function casts(): array
     {
-        return [
+        return array_merge(self::auditorDateCasts(), [
             'is_active' => 'boolean',
             'birth_date' => 'date',
             'hire_date' => 'date',
             'basic_salary' => 'decimal:2',
             'overtime_hour_rate' => 'decimal:2',
+            'overtime_friday_hour_rate' => 'decimal:2',
             'performance_score' => 'decimal:2',
             'reliability_score' => 'decimal:2',
             'safety_score' => 'decimal:2',
-        ];
+        ]);
     }
 
     protected $appends = [

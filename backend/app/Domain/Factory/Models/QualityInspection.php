@@ -2,12 +2,15 @@
 
 namespace App\Domain\Factory\Models;
 
+use App\Domain\Factory\Models\Concerns\TracksAuditorColumns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class QualityInspection extends Model
 {
+    use TracksAuditorColumns;
+
     protected $fillable = [
         'production_entry_id',
         'inspector_id',
@@ -15,6 +18,11 @@ class QualityInspection extends Model
         'sample_size',
         'notes',
     ];
+
+    protected function casts(): array
+    {
+        return self::auditorDateCasts();
+    }
 
     public function productionEntry(): BelongsTo
     {

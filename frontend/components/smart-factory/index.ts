@@ -23,7 +23,7 @@ export {
 } from "./industrial-table";
 
 export { IndustrialField } from "./industrial-field";
-export { IndustrialInput } from "./industrial-input";
+export { IndustrialInput, IndustrialTextarea } from "./industrial-input";
 export { IndustrialSelect } from "./industrial-select";
 
 export { SfModal } from "./sf-modal";

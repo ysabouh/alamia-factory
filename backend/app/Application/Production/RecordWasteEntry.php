@@ -13,7 +13,7 @@ class RecordWasteEntry
         return DB::transaction(function () use ($data, $userId): WasteEntry {
             $entry = WasteEntry::create([
                 ...$data,
-                'created_by_id' => $userId,
+                'created_by' => $userId,
             ]);
 
             WasteEntryCreated::dispatch($entry);

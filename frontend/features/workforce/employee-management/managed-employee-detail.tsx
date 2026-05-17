@@ -16,6 +16,8 @@ import { SfStatusBadge } from "@/components/smart-factory";
 import { Button } from "@/components/ui/button";
 
 import type { ManagedEmployee } from "./model";
+import { EmployeeSystemAccessCard } from "@/features/access-control/employee-system-access-card";
+
 import { EmployeeQuickActions } from "./employee-quick-actions";
 
 function attendanceToSfTone(a: ManagedEmployee["attendanceStatus"]) {
@@ -62,8 +64,8 @@ export function ManagedEmployeeDetail({
         >
           {!employee.photoUrl ? (
             <span className="flex h-full items-center justify-center text-2xl font-bold text-sf-ink">
-              {employee.firstName[0]}
-              {employee.lastName[0]}
+              {(employee.firstName?.[0] ?? employee.fullName?.[0] ?? "?")}
+              {(employee.lastName?.[0] ?? "")}
             </span>
           ) : null}
           <span className="absolute bottom-2 start-2 rounded-sm bg-black/55 px-1.5 py-0.5 font-mono text-[10px] text-sf-ink">
@@ -99,6 +101,11 @@ export function ManagedEmployeeDetail({
       </div>
 
       <EmployeeQuickActions employee={employee} variant="detail" onPatched={onEmployeePatched} />
+
+      <EmployeeSystemAccessCard
+        employee={employee}
+        onUpdated={(patch) => onEmployeePatched?.({ ...employee, ...patch })}
+      />
 
       <div className="grid gap-4 sm:grid-cols-3">
         {[
@@ -154,8 +161,12 @@ export function ManagedEmployeeDetail({
                 <dd className="font-mono text-sf-ink">{employee.salary.toLocaleString("ar-SA")} ﷼</dd>
               </div>
               <div className="flex justify-between border-b border-sf-hairline py-2">
-                <dt className="text-sf-muted">ساعة إضافي</dt>
+                <dt className="text-sf-muted">ساعة إضافي — أيام عادية</dt>
                 <dd className="font-mono text-sf-ink">{employee.overtimeRate} ﷼</dd>
+              </div>
+              <div className="flex justify-between border-b border-sf-hairline py-2">
+                <dt className="text-sf-muted">ساعة إضافي — الجمعة</dt>
+                <dd className="font-mono text-sf-ink">{employee.overtimeFridayRate} ﷼</dd>
               </div>
               <div className="flex justify-between py-2 sm:col-span-2">
                 <dt className="text-sf-muted">رصيد الإجازة السنوية</dt>

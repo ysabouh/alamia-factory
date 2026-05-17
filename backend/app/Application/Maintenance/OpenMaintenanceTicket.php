@@ -16,7 +16,7 @@ class OpenMaintenanceTicket
         return DB::transaction(function () use ($data, $userId): MaintenanceTicket {
             $ticket = MaintenanceTicket::create([
                 ...$data,
-                'created_by_id' => $userId,
+                'created_by' => $userId,
                 'downtime_started_at' => $data['downtime_started_at'] ?? now(),
             ]);
 

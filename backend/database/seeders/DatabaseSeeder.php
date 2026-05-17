@@ -15,7 +15,6 @@ use App\Domain\Factory\Models\Shift;
 use App\Domain\Factory\Models\User;
 use App\Domain\Factory\Models\Warehouse;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -40,16 +39,20 @@ class DatabaseSeeder extends Seeder
             'users.manage',
             'workforce.view',
             'workforce.manage_placement',
+            'workforce.manage_employees',
+            'workforce.manage_masters',
         ];
 
+        $guard = 'web';
+
         foreach ($permissions as $permission) {
-            Permission::findOrCreate($permission);
+            Permission::findOrCreate($permission, $guard);
         }
 
-        $admin = Role::findOrCreate('admin');
-        $admin->givePermissionTo($permissions);
+        $admin = Role::findOrCreate('admin', $guard);
+        $admin->syncPermissions(Permission::query()->where('guard_name', $guard)->get());
 
-        Role::findOrCreate('supervisor')->givePermissionTo([
+        Role::findOrCreate('supervisor', $guard)->givePermissionTo([
             'machines.view',
             'machines.update_status',
             'production.record',
@@ -66,16 +69,19 @@ class DatabaseSeeder extends Seeder
             ['name' => 'مدير النظام', 'job_title' => 'مسؤول النظام', 'department' => 'تقنية المعلومات']
         );
 
-        $user = User::firstOrCreate(
-            ['email' => 'admin@myfactory.local'],
+        $super = config('factory.superadmin');
+
+        /** كلمة المرور نصّية: نموذج User يطبّق cast «hashed» فيُخزَّن bcrypt تلقائياً. */
+        $user = User::updateOrCreate(
+            ['email' => $super['email']],
             [
                 'employee_id' => $employee->id,
-                'name' => 'مدير النظام',
-                'password' => Hash::make('password'),
+                'name' => $super['name'],
+                'password' => $super['password'],
                 'is_active' => true,
             ]
         );
-        $user->assignRole('admin');
+        $user->syncRoles([$super['role']]);
 
         $injection = MachineType::firstOrCreate(['code' => 'injection'], ['name' => 'حقن']);
         $blow = MachineType::firstOrCreate(['code' => 'blow_molding'], ['name' => 'نفخ']);

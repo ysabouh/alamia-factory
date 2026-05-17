@@ -2,12 +2,15 @@
 
 namespace App\Domain\Factory\Models;
 
+use App\Domain\Factory\Models\Concerns\TracksAuditorColumns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class StockLevel extends Model
 {
+    use TracksAuditorColumns;
+
     protected $fillable = [
         'warehouse_id',
         'storage_location_id',
@@ -19,9 +22,9 @@ class StockLevel extends Model
 
     protected function casts(): array
     {
-        return [
+        return array_merge(self::auditorDateCasts(), [
             'quantity' => 'decimal:3',
-        ];
+        ]);
     }
 
     public function item(): MorphTo

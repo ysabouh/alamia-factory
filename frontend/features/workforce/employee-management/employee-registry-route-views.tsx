@@ -117,5 +117,5 @@ export function EmployeeEditRouteView({ id }: { id: string }) {
   }
   if (!employee) notFound();
 
-  return <ManagedEmployeeEditForm employee={employee} />;
+  return <ManagedEmployeeEditForm employee={employee} onEmployeeUpdated={setEmployee} />;
 }

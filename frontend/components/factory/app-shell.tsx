@@ -21,9 +21,11 @@ import {
   SunMedium,
   Users,
   Wrench,
-  X
+  X,
+  LogOut
 } from "lucide-react";
 
+import { useFactoryAuth } from "@/contexts/factory-auth-context";
 import { cn } from "@/lib/utils";
 
 function navItemActive(pathname: string, href: string) {
@@ -47,10 +49,10 @@ const navigation = [
 ];
 
 const secondaryNavigation = [
-  { label: "الصيانة", icon: Wrench },
-  { label: "المستودعات", icon: Boxes },
-  { label: "الموظفون", icon: Users },
-  { label: "الإعدادات", icon: Settings }
+  { href: "/ar/admin" as const, label: "الصيانة", icon: Wrench },
+  { href: "/ar/inventory" as const, label: "المستودعات", icon: Boxes },
+  { href: "/ar/workforce/employees" as const, label: "الموظفون", icon: Users },
+  { href: "/ar/system/ui" as const, label: "الإعدادات", icon: Settings }
 ];
 
 function SidebarBrandCard() {
@@ -105,16 +107,21 @@ function SidebarNavSections({
         <div className="mt-3 grid gap-1.5">
           {secondaryNavigation.map((item) => {
             const Icon = item.icon;
+            const active = navItemActive(pathname, item.href);
 
             return (
-              <div
-                key={item.label}
-                className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm text-atlas-sidebarMuted hover:bg-white/[0.05]"
+              <Link
+                key={item.href}
+                href={item.href as Route}
+                onClick={onNavigate}
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm text-atlas-sidebarMuted transition-colors hover:bg-white/[0.08] hover:text-atlas-paper",
+                  active && "bg-atlas-brand/25 font-medium text-atlas-paper"
+                )}
               >
                 <Icon className="h-5 w-5 shrink-0 opacity-80" />
                 {item.label}
-                <span className="mr-auto rounded-full bg-white/[0.08] px-2 py-0.5 text-[10px] text-white/90">قريباً</span>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -125,6 +132,7 @@ function SidebarNavSections({
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { user, logout } = useFactoryAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
@@ -230,9 +238,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <SunMedium className="h-4 w-4 dark:hidden" />
                 <MoonStar className="hidden h-4 w-4 dark:block" />
               </button>
-              <div className="rounded-full border border-atlas-rule bg-atlas-canvas px-3 py-1 text-xs text-atlas-muted">
-                أدمن: admin@myfactory.local
+              <div className="hidden max-w-[200px] truncate rounded-full border border-atlas-rule bg-atlas-canvas px-3 py-1 text-xs text-atlas-muted sm:inline-block" title={user?.email}>
+                {user?.name ?? "—"} · {user?.email ?? ""}
               </div>
+              <button
+                type="button"
+                onClick={() => void logout()}
+                className="inline-flex items-center gap-1 rounded-full border border-atlas-rule bg-atlas-paper px-3 py-1 text-xs text-atlas-ink shadow-atlasBar hover:bg-atlas-canvas"
+              >
+                <LogOut className="h-3.5 w-3.5" aria-hidden />
+                خروج
+              </button>
             </div>
           </div>
         </header>

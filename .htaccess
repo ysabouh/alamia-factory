@@ -1,0 +1,11 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /myfactory/
+
+    # Optional: Laravel API via Apache (MySQL still from XAMPP)
+    RewriteRule ^api(?:/.*)?$ backend/public/index.php [L,QSA]
+    RewriteRule ^up$ backend/public/index.php [L,QSA]
+
+    # Everything else -> Next.js on port 3010 (UI is not served by Apache alone)
+    RewriteRule ^(.*)$ http://127.0.0.1:3010/myfactory/$1 [R=302,L,QSA]
+</IfModule>

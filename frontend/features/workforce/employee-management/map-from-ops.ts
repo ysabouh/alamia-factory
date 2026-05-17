@@ -57,6 +57,7 @@ export function managedFromOpsRow(e: ReturnType<typeof opsEmployeesFromDashboard
     isActive: true,
     salary: e.basicSalaryMonthly ?? 4200,
     overtimeRate: 18,
+    overtimeFridayRate: 27,
     hireDate: "2023-04-01",
     photoUrl: e.photoUrl ?? null,
     notes: e.departmentDetail ?? "",
@@ -74,7 +75,8 @@ export function managedFromOpsRow(e: ReturnType<typeof opsEmployeesFromDashboard
     penalties: syntheticPenalties(e.violations),
     attendancePresentDays: 20,
     attendanceLateDays: e.attendance === "late" ? 2 : 1,
-    attendanceAbsentDays: e.attendance === "absent" ? 1 : 0
+    attendanceAbsentDays: e.attendance === "absent" ? 1 : 0,
+    systemUser: null
   };
 }
 
@@ -95,6 +97,7 @@ export function mergeWithLiveRoster(stored: ManagedEmployee[], dashboard: LiveDa
       photoUrl: old.photoUrl ?? f.photoUrl,
       salary: old.salary,
       overtimeRate: old.overtimeRate,
+      overtimeFridayRate: old.overtimeFridayRate,
       status: old.status,
       rewards: old.rewards.length ? old.rewards : f.rewards,
       penalties: old.penalties.length ? old.penalties : f.penalties

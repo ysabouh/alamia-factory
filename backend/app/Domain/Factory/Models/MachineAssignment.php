@@ -2,11 +2,14 @@
 
 namespace App\Domain\Factory\Models;
 
+use App\Domain\Factory\Models\Concerns\TracksAuditorColumns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MachineAssignment extends Model
 {
+    use TracksAuditorColumns;
+
     protected $fillable = [
         'machine_id',
         'mold_id',
@@ -20,10 +23,10 @@ class MachineAssignment extends Model
 
     protected function casts(): array
     {
-        return [
+        return array_merge(self::auditorDateCasts(), [
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
-        ];
+        ]);
     }
 
     public function machine(): BelongsTo

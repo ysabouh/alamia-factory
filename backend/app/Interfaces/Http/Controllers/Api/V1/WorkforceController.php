@@ -44,6 +44,7 @@ class WorkforceController
             ]);
 
         $jobRoles = JobRole::query()
+            ->where('is_active', true)
             ->orderBy('role_level')
             ->orderBy('code')
             ->get(['id', 'name', 'code', 'role_level'])

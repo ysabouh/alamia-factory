@@ -501,10 +501,9 @@ TECH STACK
 
 Backend:
 - MySQL
-- Node.js
-- NestJS
-- Prisma ORM
-- REST API + WebSocket
+- PHP (Laravel)
+- Eloquent ORM
+- REST API (Sanctum) + WebSocket حيث ينطبق
 
 Frontend:
 - React

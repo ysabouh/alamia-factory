@@ -1,0 +1,14 @@
+{
+  "name": "myfactory",
+  "private": true,
+  "description": "MyFactory local dev: Laravel API + Next UI",
+  "scripts": {
+    "dev": "concurrently -n api,web -c auto \"cd backend && php artisan serve --host=127.0.0.1 --port=8000\" \"wait-on -t 90000 tcp:127.0.0.1:8000 && cd frontend && npm run dev:clean\"",
+    "dev:web": "cd frontend && npm run dev:clean",
+    "dev:api": "cd backend && php artisan serve --host=127.0.0.1 --port=8000"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "wait-on": "^8.0.5"
+  }
+}

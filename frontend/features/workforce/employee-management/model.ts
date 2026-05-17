@@ -52,7 +52,10 @@ export interface ManagedEmployee {
   employeeStatusId: string | null;
   isActive: boolean;
   salary: number;
+  /** سعر الساعة الإضافية — أيام عادية */
   overtimeRate: number;
+  /** سعر الساعة الإضافية — يوم الجمعة */
+  overtimeFridayRate: number;
   hireDate: string;
   photoUrl: string | null;
   notes: string;
@@ -72,6 +75,15 @@ export interface ManagedEmployee {
   attendancePresentDays: number;
   attendanceLateDays: number;
   attendanceAbsentDays: number;
+  /** حساب دخول النظام المرتبط بالموظف (إن وُجد) */
+  systemUser: {
+    id: number;
+    email: string;
+    name: string;
+    isActive: boolean;
+    roles: string[];
+    permissions: string[];
+  } | null;
 }
 
 export const DEPARTMENTS = ["الإنتاج", "الصيانة", "الجودة", "المستودعات", "المحاسبة", "إداري"] as const;
@@ -97,18 +109,22 @@ export const employeeFormSchema = z.object({
   birthDate: z.string().min(1, "مطلوب"),
   phone: z.string().min(6, "رقم غير صالح"),
   emergencyPhone: z.string().min(6, "رقم غير صالح"),
-  email: z.string().email("بريد غير صالح"),
+  email: z.string().refine((s) => {
+    const t = s.trim();
+    return t === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
+  }, "بريد غير صالح"),
   nationalId: z.string().min(4, "مطلوب"),
   address: z.string().min(2, "مطلوب"),
-  hallId: z.string().min(1, "اختر القاعة"),
-  departmentId: z.string().min(1, "اختر القسم"),
-  jobRoleId: z.string().min(1, "اختر الدور"),
-  shiftId: z.string().min(1, "اختر الوردية"),
+  hallId: z.string().default(""),
+  departmentId: z.string().default(""),
+  jobRoleId: z.string().default(""),
+  shiftId: z.string().default(""),
   salary: z.coerce.number().min(0),
   overtimeRate: z.coerce.number().min(0),
+  overtimeFridayRate: z.coerce.number().min(0),
   hireDate: z.string().min(1, "مطلوب"),
-  photoUrl: z.string().max(2048),
-  notes: z.string()
+  photoUrl: z.string().max(4_000_000).default(""),
+  notes: z.string().default("")
 });
 
 export const employeeEditExtensionSchema = z.object({

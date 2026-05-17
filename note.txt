@@ -1,13 +1,44 @@
-this app to may factory
+MyFactory - simple start (Windows + XAMPP)
 
-git remote add origin git@github.com:ysabouh/alamia-factory.git
+=== Every day ===
+1) XAMPP Control Panel: Start MySQL
+2) Double-click RUN.cmd  (or Start-MyFactory.cmd)
+   In PowerShell you MUST type:  .\Start-MyFactory.cmd
+3) Browser opens automatically. If not, open:
+   http://127.0.0.1:3010/myfactory/ar/login
 
+Super-admin (fixed, full permissions — reset anytime):
+  Email:    admin@myfactory.local
+  Password: Admin@2026
 
-update update update
+  Reset account:  cd backend  then  php artisan factory:ensure-superadmin
 
-d
-d
-d
-d
-d
-d
+=== Do NOT use ===
+  http://localhost          (XAMPP dashboard / Apache only - NOT the app)
+  http://localhost/myfactory (redirect only; needs Start-MyFactory running)
+  http://localhost:8080/...  (Apache port on your PC is 8080, not the app UI)
+
+=== First time only ===
+  cd backend
+  composer install
+  copy .env.example .env
+  php artisan key:generate
+  php artisan migrate --seed
+
+  In backend/.env set:
+  APP_URL=http://127.0.0.1:8000
+
+  From project root: npm install
+  From frontend: npm install
+
+=== What runs ===
+  Port 8000 = Laravel API (php artisan serve)
+  Port 3010 = Next.js UI
+  Port 3306 = MySQL (XAMPP)
+
+Apache from XAMPP is optional (only for phpMyAdmin). The app does not need Apache on port 80.
+
+=== Internal Server Error (500) ===
+  Double-click Fix-Internal-Error.cmd
+  Or: close MyFactory window, delete frontend\.next, run RUN.cmd again
+  Do not run "npm run build" while "npm run dev" is running.

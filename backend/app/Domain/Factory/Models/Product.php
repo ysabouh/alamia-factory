@@ -2,10 +2,13 @@
 
 namespace App\Domain\Factory\Models;
 
+use App\Domain\Factory\Models\Concerns\TracksAuditorColumns;
 use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
+    use TracksAuditorColumns;
+
     protected $fillable = [
         'code',
         'name',
@@ -16,9 +19,9 @@ class Product extends Model
 
     protected function casts(): array
     {
-        return [
+        return array_merge(self::auditorDateCasts(), [
             'standard_weight_grams' => 'decimal:3',
             'is_active' => 'boolean',
-        ];
+        ]);
     }
 }

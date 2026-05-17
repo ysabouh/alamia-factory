@@ -2,14 +2,14 @@
 
 namespace App\Domain\Factory\Models;
 
-use App\Domain\Factory\Models\Concerns\BelongsToFactoryUser;
+use App\Domain\Factory\Models\Concerns\TracksAuditorColumns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class InventoryTransaction extends Model
 {
-    use BelongsToFactoryUser;
+    use TracksAuditorColumns;
 
     protected $fillable = [
         'warehouse_id',
@@ -21,15 +21,15 @@ class InventoryTransaction extends Model
         'unit',
         'reference_type',
         'reference_id',
-        'created_by_id',
+        'created_by',
         'notes',
     ];
 
     protected function casts(): array
     {
-        return [
+        return array_merge(self::auditorDateCasts(), [
             'quantity' => 'decimal:3',
-        ];
+        ]);
     }
 
     public function item(): MorphTo

@@ -34,6 +34,21 @@ function num(v: unknown, fallback = 0): number {
   return fallback;
 }
 
+function parseSystemUser(raw: unknown): ApiEmployeeDetailJson["systemUser"] {
+  const o = asRecord(raw);
+  if (!o) return null;
+  const id = num(o.id, NaN);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  return {
+    id,
+    email: str(o.email) ?? "",
+    name: str(o.name) ?? "",
+    isActive: Boolean(o.isActive ?? o.is_active ?? true),
+    roles: Array.isArray(o.roles) ? (o.roles as string[]) : [],
+    permissions: Array.isArray(o.permissions) ? (o.permissions as string[]) : []
+  };
+}
+
 function refFromJson(raw: unknown): WorkforceRefJson | null {
   const o = asRecord(raw);
   if (!o) return null;
@@ -77,6 +92,8 @@ export function parseApiEmployeeDetail(raw: unknown): ApiEmployeeDetailJson | nu
 
   const status = refFromJson(o.status ?? o.employeeStatus);
 
+  const systemUser = parseSystemUser(o.systemUser);
+
   return {
     id,
     employeeNumber: str(o.employeeNumber) ?? "",
@@ -98,6 +115,7 @@ export function parseApiEmployeeDetail(raw: unknown): ApiEmployeeDetailJson | nu
     employeeStatusId: str(o.employeeStatusId),
     basicSalary: num(o.basicSalary),
     overtimeHourRate: num(o.overtimeHourRate),
+    overtimeFridayHourRate: num(o.overtimeFridayHourRate),
     performanceScore: num(o.performanceScore),
     reliabilityScore: num(o.reliabilityScore),
     safetyScore: num(o.safetyScore),
@@ -176,6 +194,7 @@ export function managedEmployeeFromApi(row: ApiEmployeeDetailJson): ManagedEmplo
     shift: shiftLabel,
     salary: row.basicSalary,
     overtimeRate: row.overtimeHourRate,
+    overtimeFridayRate: row.overtimeFridayHourRate,
     hireDate: row.hireDate || fromHire,
     photoUrl: row.profileImage?.trim() ? row.profileImage : null,
     notes: row.notes ?? "",
@@ -199,7 +218,8 @@ export function managedEmployeeFromApi(row: ApiEmployeeDetailJson): ManagedEmplo
     jobRoleId: row.jobRoleId,
     shiftId: row.shiftId,
     employeeStatusId: row.employeeStatusId,
-    isActive: row.isActive
+    isActive: row.isActive,
+    systemUser: row.systemUser ?? null
   };
 }
 
@@ -247,6 +267,7 @@ export function createPayloadFromForm(
 ): Record<string, unknown> {
   const activeId = statusIdForUi("active", catalog.statuses);
   return {
+    ...(activeId ? { statusId: activeId } : {}),
     employeeNumber: data.employeeNumber.trim(),
     firstName: data.firstName,
     lastName: data.lastName,
@@ -254,17 +275,17 @@ export function createPayloadFromForm(
     birthDate: data.birthDate,
     phone: data.phone,
     emergencyPhone: data.emergencyPhone,
-    email: data.email,
+    ...(data.email.trim() !== "" ? { email: data.email.trim() } : {}),
     nationalId: data.nationalId,
     address: data.address,
     hireDate: data.hireDate,
-    hallId: data.hallId,
-    departmentId: data.departmentId,
-    jobRoleId: data.jobRoleId,
-    shiftId: data.shiftId,
-    statusId: activeId,
+    ...(data.hallId?.trim() ? { hallId: data.hallId.trim() } : {}),
+    ...(data.departmentId?.trim() ? { departmentId: data.departmentId.trim() } : {}),
+    ...(data.jobRoleId?.trim() ? { jobRoleId: data.jobRoleId.trim() } : {}),
+    ...(data.shiftId?.trim() ? { shiftId: data.shiftId.trim() } : {}),
     basicSalary: data.salary,
     overtimeHourRate: data.overtimeRate,
+    overtimeFridayHourRate: data.overtimeFridayRate,
     profileImage: data.photoUrl?.trim() ? data.photoUrl.trim() : undefined,
     notes: data.notes?.trim() ? data.notes : undefined,
     isActive: true
@@ -284,16 +305,17 @@ export function patchPayloadFromFullEdit(
     birthDate: data.birthDate,
     phone: data.phone,
     emergencyPhone: data.emergencyPhone,
-    email: data.email,
+    ...(data.email.trim() !== "" ? { email: data.email.trim() } : { email: null }),
     nationalId: data.nationalId,
     address: data.address,
     hireDate: data.hireDate,
-    hallId: data.hallId,
-    departmentId: data.departmentId,
-    jobRoleId: data.jobRoleId,
-    shiftId: data.shiftId,
+    hallId: data.hallId?.trim() ?? "",
+    departmentId: data.departmentId?.trim() ?? "",
+    jobRoleId: data.jobRoleId?.trim() ?? "",
+    shiftId: data.shiftId?.trim() ?? "",
     basicSalary: data.salary,
     overtimeHourRate: data.overtimeRate,
+    overtimeFridayHourRate: data.overtimeFridayRate,
     performanceScore: data.performanceScore,
     reliabilityScore: data.reliabilityScore,
     safetyScore: data.productionEff,
@@ -328,7 +350,6 @@ export function listQueryFromFilters(input: {
   const q: Record<string, string | number | boolean> = {
     page: input.page,
     pageSize: input.pageSize,
-    withRelations: true,
     sortOrder: input.sortOrder,
     sortBy: input.sortBy
   };
@@ -340,7 +361,7 @@ export function listQueryFromFilters(input: {
   if (input.statusFilter === "active") q.isActive = true;
   else if (input.statusFilter === "terminated") q.isActive = false;
   else if (input.statusFilter === "suspended") {
-    const id = input.statuses.find((s) => s.code.toUpperCase() === "SUSP_REST")?.id;
+    const id = input.statuses.find((s) => s.code.toUpperCase() === "SUSPENDED")?.id;
     if (id) q.statusId = id;
   } else if (input.statusFilter === "probation") {
     const id = input.statuses.find((s) => s.code.toUpperCase() === "PROBATION")?.id;
@@ -349,6 +370,15 @@ export function listQueryFromFilters(input: {
 
   return q;
 }
+
+/** مرجعيات فارغة عند تعطل تحميل الكتالوج — تكفي لتشغيل السجل واحتياط لوحة التحكم */
+export const EMPTY_WORKFORCE_CATALOG: WorkforceCatalogJson = {
+  halls: [],
+  departments: [],
+  shifts: [],
+  jobRoles: [],
+  statuses: []
+};
 
 export type DashboardEmployeeSortKey =
   | "employeeNumber"
@@ -389,7 +419,7 @@ export function mapUiSortKeyToApi(
   return m[key] ?? "createdAt";
 }
 
-/** Client-side filter/sort for Laravel/dashboard fallback rows (no Prisma FK ids). */
+/** Client-side filter/sort for Laravel/dashboard fallback rows (بدون مفاتيح أجنبية من واجهة السجل). */
 export function filterDashboardManagedEmployees(
   full: ManagedEmployee[],
   opts: {

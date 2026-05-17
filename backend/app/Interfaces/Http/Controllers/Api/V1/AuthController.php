@@ -22,7 +22,7 @@ class AuthController
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['Invalid credentials.'],
+                'email' => [__('factory.invalid_credentials')],
             ]);
         }
 
@@ -32,8 +32,8 @@ class AuthController
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'roles' => $user->getRoleNames(),
-                'permissions' => $user->getAllPermissions()->pluck('name'),
+                'roles' => $user->roleNamesForApi(),
+                'permissions' => $user->permissionNamesForApi(),
             ],
         ]);
     }
@@ -46,8 +46,8 @@ class AuthController
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'roles' => $user->getRoleNames(),
-            'permissions' => $user->getAllPermissions()->pluck('name'),
+            'roles' => $user->roleNamesForApi(),
+            'permissions' => $user->permissionNamesForApi(),
         ]);
     }
 
@@ -55,6 +55,6 @@ class AuthController
     {
         $request->user()?->currentAccessToken()?->delete();
 
-        return response()->json(['message' => 'Logged out.']);
+        return response()->json(['message' => __('factory.logged_out')]);
     }
 }

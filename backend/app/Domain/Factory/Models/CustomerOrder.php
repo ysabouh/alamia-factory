@@ -2,12 +2,15 @@
 
 namespace App\Domain\Factory\Models;
 
+use App\Domain\Factory\Models\Concerns\TracksAuditorColumns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CustomerOrder extends Model
 {
+    use TracksAuditorColumns;
+
     protected $fillable = [
         'customer_id',
         'code',
@@ -19,10 +22,10 @@ class CustomerOrder extends Model
 
     protected function casts(): array
     {
-        return [
+        return array_merge(self::auditorDateCasts(), [
             'ordered_at' => 'date',
             'due_date' => 'date',
-        ];
+        ]);
     }
 
     public function customer(): BelongsTo

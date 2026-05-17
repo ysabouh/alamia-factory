@@ -18,19 +18,23 @@ import {
 } from "lucide-react";
 
 import {
-  IndustrialInput,
-  IndustrialSelect,
-  IndustrialTable,
-  IndustrialTableBody,
-  IndustrialTableCell,
-  IndustrialTableHead,
-  IndustrialTableHeader,
-  IndustrialTableRow,
-  SfDrawer,
-  SfStatusBadge
-} from "@/components/smart-factory";
+  WfmInput,
+  WfmSelect,
+  WfmTable,
+  WfmTableBody,
+  WfmTableCell,
+  WfmTableHead,
+  WfmTableHeader,
+  WfmTableRow,
+  WfmDrawer,
+  WfmPageHeader,
+  WfmStatusBadge,
+  type WfmBadgeTone
+} from "@/components/workforce/atlas";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+import { useFactoryAuth } from "@/contexts/factory-auth-context";
 
 import { useEmployeeRegistry } from "./employee-registry-context";
 import { ManagedEmployeeDetail } from "./managed-employee-detail";
@@ -52,18 +56,18 @@ type SortKey = keyof Pick<
   | "attendanceStatus"
 >;
 
-function employmentTone(s: ManagedEmployee["status"]): React.ComponentProps<typeof SfStatusBadge>["tone"] {
-  if (s === "active") return "running";
-  if (s === "probation") return "idle";
-  if (s === "suspended") return "quality_hold";
-  return "offline";
+function employmentTone(s: ManagedEmployee["status"]): WfmBadgeTone {
+  if (s === "active") return "active";
+  if (s === "probation") return "warning";
+  if (s === "suspended") return "danger";
+  return "neutral";
 }
 
-function attendanceTone(a: ManagedEmployee["attendanceStatus"]): React.ComponentProps<typeof SfStatusBadge>["tone"] {
-  if (a === "present") return "running";
-  if (a === "late") return "idle";
-  if (a === "absent") return "alarm";
-  return "maintenance";
+function attendanceTone(a: ManagedEmployee["attendanceStatus"]): WfmBadgeTone {
+  if (a === "present") return "active";
+  if (a === "late") return "warning";
+  if (a === "absent") return "danger";
+  return "info";
 }
 
 export function EmployeeListWorkspace() {
@@ -81,6 +85,9 @@ export function EmployeeListWorkspace() {
     deleteEmployee,
     bulkPatchEmployees
   } = useEmployeeRegistry();
+
+  const { can } = useFactoryAuth();
+  const canManageEmployees = can("workforce.manage_employees");
 
   const [search, setSearch] = useState("");
   const [dept, setDept] = useState("all");
@@ -138,12 +145,12 @@ export function EmployeeListWorkspace() {
   };
 
   const SortHead = ({ k, children }: { k: SortKey; children: React.ReactNode }) => (
-    <IndustrialTableHead>
-      <button type="button" className="inline-flex items-center gap-1 hover:text-sf-accentCool" onClick={() => toggleSort(k)}>
+    <WfmTableHead>
+      <button type="button" className="inline-flex items-center gap-1 hover:text-atlas-brand" onClick={() => toggleSort(k)}>
         {children}
         {sortKey === k ? sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" /> : null}
       </button>
-    </IndustrialTableHead>
+    </WfmTableHead>
   );
 
   const pageRows = employees;
@@ -200,86 +207,94 @@ export function EmployeeListWorkspace() {
   if (catalogLoading || !hydrated) {
     return (
       <div className="space-y-6">
-        <div className="h-32 animate-pulse rounded-xl border border-sf-hairline bg-sf-panel/40" />
-        <div className="h-64 animate-pulse rounded-xl border border-sf-hairline bg-sf-panel/30" />
-      </div>
-    );
-  }
-
-  if (catalogError) {
-    return (
-      <div className="rounded-xl border border-sf-alarm/40 bg-sf-alarm/10 p-6 text-sf-ink">
-        <p className="font-semibold">تعذر الاتصال بخادم القوى العاملة</p>
-        <p className="mt-2 text-sm text-sf-muted">
-          شغّل Nest workforce-api (افتراضيًا المنفذ 4000) واضبط{" "}
-          <code className="rounded bg-sf-deep px-1 font-mono text-xs">NEXT_PUBLIC_WORKFORCE_API_URL</code> مثل{" "}
-          <code className="font-mono text-xs">http://localhost:4000/api/v1</code>
-        </p>
-        <p className="mt-2 text-sm text-sf-alarm">{catalogError}</p>
+        <div className="h-32 animate-pulse rounded-sm border border-atlas-rule bg-atlas-paper" />
+        <div className="h-64 animate-pulse rounded-sm border border-atlas-rule bg-atlas-canvas" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <header className="relative overflow-hidden rounded-xl border border-sf-stroke/40 bg-sf-panel/70 p-6 shadow-industrial">
+      {catalogError ? (
+        <div className="rounded-sm border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-atlas-ink">
+          <p className="font-semibold text-amber-200">تنبيه: مرجعيات الأقسام/الورديات غير كاملة أو تعذّر تحميلها</p>
+          <p className="mt-1 text-atlas-muted">
+            السجل أدناه قد يعمل من لوحة المصنع الاحتياطية أو بمرجعيات جزئية. تأكد أن Laravel يعمل وأن المستخدم لديه صلاحية{" "}
+            <code className="rounded bg-atlas-canvas px-1 font-mono text-xs">workforce.view</code>.
+          </p>
+          <p className="mt-2 font-mono text-xs text-amber-100/90">{catalogError}</p>
+        </div>
+      ) : null}
+      <header className="relative overflow-hidden rounded-sm border border-atlas-rule bg-atlas-paper p-6 shadow-atlasCard">
         <div className="pointer-events-none absolute -start-20 top-0 h-40 w-40 rounded-full bg-sf-accent/10 blur-3xl" aria-hidden />
         <div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-sf-muted">WFM · REGISTRY</p>
-            <h1 className="mt-2 flex items-center gap-3 text-2xl font-bold text-sf-ink md:text-3xl">
-              <Users className="h-8 w-8 text-sf-accentCool" aria-hidden />
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-atlas-muted">WFM · REGISTRY</p>
+            <h1 className="mt-2 flex items-center gap-3 text-2xl font-bold text-atlas-ink md:text-3xl">
+              <Users className="h-8 w-8 text-atlas-brand" aria-hidden />
               سجل العاملين الصناعي
             </h1>
-            <p className="mt-2 max-w-2xl text-sm text-sf-muted">
-              متصل بـ Prisma عبر workforce-api — بحث وفلترة وترقيم من الخادم، وإجراءات جماعية عبر PATCH.
+            <p className="mt-2 max-w-2xl text-sm text-atlas-muted">
+              متصل بـ Laravel — بحث وفلترة وترقيم من الخادم، وإجراءات جماعية عبر PATCH.
             </p>
           </div>
-          <Link href={"/ar/workforce/employees/new" as Route}>
-            <Button type="button" variant="sfAccent" className="rounded-xl gap-2">
+          {canManageEmployees ? (
+            <Link href={"/ar/workforce/employees/new" as Route}>
+              <Button type="button" variant="atlasPrimary" className="rounded-sm gap-2">
+                <Plus className="h-4 w-4" />
+                إضافة موظف
+              </Button>
+            </Link>
+          ) : (
+            <Button type="button" variant="atlasOutline" className="rounded-sm opacity-60" disabled title="تتطلب صلاحية workforce.manage_employees">
               <Plus className="h-4 w-4" />
               إضافة موظف
             </Button>
-          </Link>
+          )}
         </div>
       </header>
 
       {listSource === "dashboard" ? (
-        <div className="rounded-lg border border-sf-caution/40 bg-sf-caution/10 px-4 py-3 text-sm text-sf-ink">
+        <div className="rounded-lg border border-atlas-warning/40 bg-atlas-warning/10 px-4 py-3 text-sm text-atlas-ink">
           <span className="font-semibold">عرض احتياطي من لوحة المصنع</span>
-          <span className="text-sf-muted">
+          <span className="text-atlas-muted">
             {" "}
-            — جدول الموظفين في <span className="font-mono text-xs">workforce-api</span> فارغ أو غير مزروع. شغّل{" "}
-            <span className="font-mono text-xs">npx prisma db seed</span> داخل مجلد workforce-api، أو أضف موظفين من «إضافة
-            موظف». أثناء العرض الاحتياطي لا تُحفظ التعديلات الجماعية أو الحذف على Prisma.
+            — تعذّر تحميل السجل من الخادم أو لا يوجد موظفون في قاعدة البيانات. نفّذ{" "}
+            <span className="font-mono text-xs">php artisan migrate --seed</span> في مجلد backend أو أضف موظفين من «إضافة
+            موظف». أثناء العرض الاحتياطي لا تُحفظ التعديلات الجماعية أو الحذف على قاعدة البيانات.
           </span>
         </div>
       ) : null}
 
       {listError ? (
-        <div className="rounded-lg border border-sf-alarm/35 bg-sf-alarm/10 px-4 py-3 text-sm text-sf-alarm">{listError}</div>
+        <div className="rounded-lg border border-atlas-danger/35 bg-atlas-danger/10 px-4 py-3 text-sm text-atlas-danger">{listError}</div>
       ) : null}
 
-      <div className="flex flex-col gap-4 rounded-xl border border-sf-hairline bg-sf-chassis/90 p-4 md:flex-row md:flex-wrap md:items-end">
-        <div className="relative min-w-[200px] flex-1">
-          <Search className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sf-muted" />
-          <IndustrialInput
+      <div className="flex flex-wrap items-end gap-3 rounded-sm border border-atlas-rule bg-atlas-paper p-4">
+        <label className="min-w-[12rem] flex-1 basis-[14rem] space-y-1">
+          <span className="text-[11px] font-medium text-atlas-muted">بحث</span>
+          <div className="relative">
+          <Search className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-atlas-muted" />
+          <WfmInput
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            placeholder="بحث: الاسم، الرقم، البريد..."
+            placeholder="الاسم، الرقم، البريد…"
             className="pe-10"
           />
-        </div>
-        <IndustrialSelect
+          </div>
+        </label>
+        <label className="min-w-[9.5rem] shrink-0 space-y-1">
+          <span className="text-[11px] font-medium text-atlas-muted">القسم</span>
+          <WfmSelect
           value={dept}
           onChange={(e) => {
             setDept(e.target.value);
             setPage(1);
           }}
-          className="min-w-[160px]"
+          className="w-full min-w-[9.5rem]"
         >
           <option value="all">كل الأقسام</option>
           {(catalog?.departments ?? []).map((d) => (
@@ -287,14 +302,17 @@ export function EmployeeListWorkspace() {
               {d.name}
             </option>
           ))}
-        </IndustrialSelect>
-        <IndustrialSelect
+        </WfmSelect>
+        </label>
+        <label className="min-w-[8.5rem] shrink-0 space-y-1">
+          <span className="text-[11px] font-medium text-atlas-muted">الوردية</span>
+          <WfmSelect
           value={shift}
           onChange={(e) => {
             setShift(e.target.value);
             setPage(1);
           }}
-          className="min-w-[140px]"
+          className="w-full min-w-[8.5rem]"
         >
           <option value="all">كل الورديات</option>
           {(catalog?.shifts ?? []).map((s) => (
@@ -302,14 +320,17 @@ export function EmployeeListWorkspace() {
               {s.name}
             </option>
           ))}
-        </IndustrialSelect>
-        <IndustrialSelect
+        </WfmSelect>
+        </label>
+        <label className="min-w-[9.5rem] shrink-0 space-y-1">
+          <span className="text-[11px] font-medium text-atlas-muted">الدور</span>
+          <WfmSelect
           value={role}
           onChange={(e) => {
             setRole(e.target.value);
             setPage(1);
           }}
-          className="min-w-[180px]"
+          className="w-full min-w-[9.5rem]"
         >
           <option value="all">كل الأدوار</option>
           {(catalog?.jobRoles ?? []).map((r) => (
@@ -317,25 +338,29 @@ export function EmployeeListWorkspace() {
               {r.name}
             </option>
           ))}
-        </IndustrialSelect>
-        <IndustrialSelect
+        </WfmSelect>
+        </label>
+        <label className="min-w-[8.5rem] shrink-0 space-y-1">
+          <span className="text-[11px] font-medium text-atlas-muted">الحالة</span>
+          <WfmSelect
           value={status}
           onChange={(e) => {
             setStatus(e.target.value as "all" | EmployeeEmploymentStatus);
             setPage(1);
           }}
-          className="min-w-[140px]"
+          className="w-full min-w-[8.5rem]"
         >
           <option value="all">كل الحالات</option>
           <option value="active">نشط</option>
           <option value="suspended">موقوف</option>
           <option value="probation">مراقبة</option>
           <option value="terminated">منتهي</option>
-        </IndustrialSelect>
+        </WfmSelect>
+        </label>
         <Button
           type="button"
-          variant="sfGhost"
-          className="rounded-lg"
+          variant="atlasOutline"
+          className="shrink-0"
           onClick={() => {
             setSearch("");
             setDept("all");
@@ -349,10 +374,10 @@ export function EmployeeListWorkspace() {
         </Button>
       </div>
 
-      <IndustrialTable>
-        <IndustrialTableHeader>
-          <IndustrialTableRow>
-            <IndustrialTableHead className="w-10">
+      <WfmTable>
+        <WfmTableHeader>
+          <WfmTableRow>
+            <WfmTableHead className="w-10">
               <input
                 type="checkbox"
                 checked={allPageSelected}
@@ -360,8 +385,8 @@ export function EmployeeListWorkspace() {
                 className="size-4 rounded border-sf-stroke bg-sf-panel accent-sf-accentCool"
                 aria-label="تحديد الصفحة"
               />
-            </IndustrialTableHead>
-            <IndustrialTableHead className="w-14">صورة</IndustrialTableHead>
+            </WfmTableHead>
+            <WfmTableHead className="w-14">صورة</WfmTableHead>
             <SortHead k="employeeNumber">الرقم</SortHead>
             <SortHead k="fullName">الاسم</SortHead>
             <SortHead k="role">الدور</SortHead>
@@ -371,21 +396,21 @@ export function EmployeeListWorkspace() {
             <SortHead k="status">الحالة</SortHead>
             <SortHead k="performanceScore">الأداء</SortHead>
             <SortHead k="attendanceStatus">الحضور</SortHead>
-            <IndustrialTableHead className="text-end">إجراءات</IndustrialTableHead>
-          </IndustrialTableRow>
-        </IndustrialTableHeader>
-        <IndustrialTableBody>
+            <WfmTableHead className="text-end">إجراءات</WfmTableHead>
+          </WfmTableRow>
+        </WfmTableHeader>
+        <WfmTableBody>
           {listLoading ? (
-            <IndustrialTableRow>
-              <IndustrialTableCell colSpan={12} className="py-12 text-center text-sf-muted">
+            <WfmTableRow>
+              <WfmTableCell colSpan={12} className="py-12 text-center text-atlas-muted">
                 جاري التحميل…
-              </IndustrialTableCell>
-            </IndustrialTableRow>
+              </WfmTableCell>
+            </WfmTableRow>
           ) : null}
           {!listLoading &&
             pageRows.map((e) => (
-              <IndustrialTableRow key={e.id} className={cn(selected.has(e.id) && "bg-sf-accent/5")}>
-                <IndustrialTableCell>
+              <WfmTableRow key={e.id} className={cn(selected.has(e.id) && "bg-sf-accent/5")}>
+                <WfmTableCell>
                   <input
                     type="checkbox"
                     checked={selected.has(e.id)}
@@ -393,10 +418,10 @@ export function EmployeeListWorkspace() {
                     className="size-4 rounded border-sf-stroke bg-sf-panel accent-sf-accentCool"
                     aria-label={`تحديد ${e.fullName}`}
                   />
-                </IndustrialTableCell>
-                <IndustrialTableCell>
+                </WfmTableCell>
+                <WfmTableCell>
                   <div
-                    className="h-10 w-10 overflow-hidden rounded-lg border border-sf-stroke/50 bg-sf-panel2"
+                    className="h-10 w-10 overflow-hidden rounded-lg border border-atlas-rule bg-sf-panel2"
                     style={
                       e.photoUrl
                         ? { backgroundImage: `url(${e.photoUrl})`, backgroundSize: "cover" }
@@ -406,26 +431,26 @@ export function EmployeeListWorkspace() {
                     }
                   >
                     {!e.photoUrl ? (
-                      <span className="flex h-full items-center justify-center text-[10px] font-bold text-sf-ink">
+                      <span className="flex h-full items-center justify-center text-[10px] font-bold text-atlas-ink">
                         {(e.firstName[0] ?? "") + (e.lastName[0] ?? "")}
                       </span>
                     ) : null}
                   </div>
-                </IndustrialTableCell>
-                <IndustrialTableCell className="font-mono text-xs text-sf-accentCool">{e.employeeNumber}</IndustrialTableCell>
-                <IndustrialTableCell className="font-medium text-sf-ink">{e.fullName}</IndustrialTableCell>
-                <IndustrialTableCell className="max-w-[140px] truncate text-sf-muted">{e.role}</IndustrialTableCell>
-                <IndustrialTableCell className="text-sf-copy">{e.department}</IndustrialTableCell>
-                <IndustrialTableCell className="text-sf-muted">{e.hall}</IndustrialTableCell>
-                <IndustrialTableCell className="text-sf-copy">{e.shift}</IndustrialTableCell>
-                <IndustrialTableCell>
-                  <SfStatusBadge tone={employmentTone(e.status)} pulse={e.status === "active"}>
+                </WfmTableCell>
+                <WfmTableCell className="font-mono text-xs text-atlas-brand">{e.employeeNumber}</WfmTableCell>
+                <WfmTableCell className="font-medium text-atlas-ink">{e.fullName}</WfmTableCell>
+                <WfmTableCell className="max-w-[140px] truncate text-atlas-muted">{e.role}</WfmTableCell>
+                <WfmTableCell className="text-atlas-slate">{e.department}</WfmTableCell>
+                <WfmTableCell className="text-atlas-muted">{e.hall}</WfmTableCell>
+                <WfmTableCell className="text-atlas-slate">{e.shift}</WfmTableCell>
+                <WfmTableCell>
+                  <WfmStatusBadge tone={employmentTone(e.status)}>
                     {e.status === "active" ? "نشط" : e.status === "suspended" ? "موقوف" : e.status === "probation" ? "مراقبة" : "منتهي"}
-                  </SfStatusBadge>
-                </IndustrialTableCell>
-                <IndustrialTableCell className="font-mono text-sf-accent">{e.performanceScore}</IndustrialTableCell>
-                <IndustrialTableCell>
-                  <SfStatusBadge tone={attendanceTone(e.attendanceStatus)}>
+                  </WfmStatusBadge>
+                </WfmTableCell>
+                <WfmTableCell className="font-mono text-atlas-brand">{e.performanceScore}</WfmTableCell>
+                <WfmTableCell>
+                  <WfmStatusBadge tone={attendanceTone(e.attendanceStatus)}>
                     {e.attendanceStatus === "present"
                       ? "حاضر"
                       : e.attendanceStatus === "late"
@@ -433,29 +458,37 @@ export function EmployeeListWorkspace() {
                         : e.attendanceStatus === "absent"
                           ? "غائب"
                           : "إجازة"}
-                  </SfStatusBadge>
-                </IndustrialTableCell>
-                <IndustrialTableCell>
+                  </WfmStatusBadge>
+                </WfmTableCell>
+                <WfmTableCell>
                   <div className="flex flex-wrap items-center justify-end gap-1">
-                    <Button type="button" variant="sfGhost" size="icon" className="h-8 w-8 rounded-lg" title="تفاصيل" onClick={() => setDrawerId(e.id)}>
+                    <Button
+                      type="button"
+                      variant="atlasOutline"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg"
+                      title="عرض التفاصيل"
+                      onClick={() => setDrawerId(e.id)}
+                    >
                       <Eye className="h-4 w-4" />
+                      <span className="sr-only">عرض</span>
                     </Button>
-                    {listSource === "prisma" ? (
+                    {listSource === "laravel" ? (
                       <Link href={`/ar/workforce/employees/${encodeURIComponent(e.id)}/edit` as Route}>
-                        <Button type="button" variant="sfGhost" size="icon" className="h-8 w-8 rounded-lg" title="تعديل">
+                        <Button type="button" variant="atlasOutline" size="icon" className="h-8 w-8 rounded-lg" title="تعديل">
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </Link>
                     ) : (
-                      <Button type="button" variant="sfGhost" size="icon" className="h-8 w-8 rounded-lg opacity-40" disabled title="التعديل يتطلب سجلاً في Prisma">
+                      <Button type="button" variant="atlasOutline" size="icon" className="h-8 w-8 rounded-lg opacity-40" disabled title="التعديل يتطلب السجل من الخادم">
                         <Pencil className="h-4 w-4" />
                       </Button>
                     )}
                     <Button
                       type="button"
-                      variant="sfGhost"
+                      variant="atlasOutline"
                       size="icon"
-                      className="h-8 w-8 rounded-lg text-sf-alarm hover:bg-sf-alarm/10"
+                      className="h-8 w-8 rounded-lg text-atlas-danger hover:bg-sf-alarm/10"
                       title={listSource === "dashboard" ? "غير متاح في العرض الاحتياطي" : "حذف من قاعدة البيانات"}
                       disabled={listSource === "dashboard" || deleteBusy === e.id}
                       onClick={async () => {
@@ -476,20 +509,20 @@ export function EmployeeListWorkspace() {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                </IndustrialTableCell>
-              </IndustrialTableRow>
+                </WfmTableCell>
+              </WfmTableRow>
             ))}
-        </IndustrialTableBody>
-      </IndustrialTable>
+        </WfmTableBody>
+      </WfmTable>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-sf-hairline pt-4 text-sm text-sf-muted">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-atlas-rule pt-4 text-sm text-atlas-muted">
         <span>
           إجمالي {listMeta.total} — عرض الصفحة {listMeta.page} من {listMeta.totalPages}
         </span>
         <div className="flex items-center gap-2">
           <Button
             type="button"
-            variant="sfGhost"
+            variant="atlasOutline"
             size="sm"
             className="rounded-lg"
             disabled={page <= 1 || listLoading}
@@ -497,12 +530,12 @@ export function EmployeeListWorkspace() {
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <span className="font-mono text-sf-copy">
+          <span className="font-mono text-atlas-slate">
             {page} / {listMeta.totalPages}
           </span>
           <Button
             type="button"
-            variant="sfGhost"
+            variant="atlasOutline"
             size="sm"
             className="rounded-lg"
             disabled={page >= listMeta.totalPages || listLoading}
@@ -519,11 +552,11 @@ export function EmployeeListWorkspace() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16 }}
-            className="fixed bottom-6 start-1/2 z-50 flex w-[min(96vw,840px)] -translate-x-1/2 flex-col gap-3 rounded-2xl border border-sf-stroke/50 bg-sf-chassis/95 px-4 py-3 shadow-industrial backdrop-blur-md rtl:translate-x-1/2"
+            className="fixed bottom-6 start-1/2 z-50 flex w-[min(96vw,840px)] -translate-x-1/2 flex-col gap-3 rounded-2xl border border-atlas-rule bg-sf-chassis/95 px-4 py-3 shadow-atlasCard backdrop-blur-md rtl:translate-x-1/2"
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm font-semibold text-sf-ink">{selected.size} محدد</span>
-              <Button type="button" variant="sfGhost" size="sm" className="rounded-lg" onClick={() => setSelected(new Set())}>
+              <span className="text-sm font-semibold text-atlas-ink">{selected.size} محدد</span>
+              <Button type="button" variant="atlasOutline" size="sm" className="rounded-lg" onClick={() => setSelected(new Set())}>
                 إلغاء التحديد
               </Button>
             </div>
@@ -538,7 +571,7 @@ export function EmployeeListWorkspace() {
               >
                 تعليق الجماعي
               </Button>
-              <IndustrialSelect
+              <WfmSelect
                 value={bulkShiftId}
                 onChange={(e) => setBulkShiftId(e.target.value)}
                 className="min-w-[160px]"
@@ -549,7 +582,7 @@ export function EmployeeListWorkspace() {
                     {s.name}
                   </option>
                 ))}
-              </IndustrialSelect>
+              </WfmSelect>
               <Button
                 type="button"
                 variant="sfMuted"
@@ -560,7 +593,7 @@ export function EmployeeListWorkspace() {
               >
                 تعيين وردية
               </Button>
-              <IndustrialSelect
+              <WfmSelect
                 value={bulkDeptId}
                 onChange={(e) => setBulkDeptId(e.target.value)}
                 className="min-w-[180px]"
@@ -571,7 +604,7 @@ export function EmployeeListWorkspace() {
                     {d.name}
                   </option>
                 ))}
-              </IndustrialSelect>
+              </WfmSelect>
               <Button
                 type="button"
                 variant="sfMuted"
@@ -587,7 +620,7 @@ export function EmployeeListWorkspace() {
         ) : null}
       </AnimatePresence>
 
-      <SfDrawer
+      <WfmDrawer
         open={!!drawerId}
         onOpenChange={(o) => !o && setDrawerId(null)}
         title={drawerEmployee?.fullName ?? ""}
@@ -596,21 +629,21 @@ export function EmployeeListWorkspace() {
         footer={
           drawerEmployee ? (
             <div className="flex w-full flex-wrap gap-2">
-              {listSource === "prisma" ? (
-                <Button asChild variant="sfAccent" className="flex-1 rounded-xl">
+              {listSource === "laravel" ? (
+                <Button asChild variant="atlasPrimary" className="flex-1 rounded-sm">
                   <Link href={`/ar/workforce/employees/${encodeURIComponent(drawerEmployee.id)}` as Route}>صفحة كاملة</Link>
                 </Button>
               ) : (
-                <Button type="button" variant="sfAccent" className="flex-1 rounded-xl opacity-45" disabled>
+                <Button type="button" variant="atlasPrimary" className="flex-1 rounded-sm opacity-45" disabled>
                   صفحة كاملة
                 </Button>
               )}
-              {listSource === "prisma" ? (
-                <Button asChild variant="sfCool" className="flex-1 rounded-xl">
+              {listSource === "laravel" ? (
+                <Button asChild variant="sfCool" className="flex-1 rounded-sm">
                   <Link href={`/ar/workforce/employees/${encodeURIComponent(drawerEmployee.id)}/edit` as Route}>تعديل</Link>
                 </Button>
               ) : (
-                <Button type="button" variant="sfCool" className="flex-1 rounded-xl opacity-45" disabled>
+                <Button type="button" variant="sfCool" className="flex-1 rounded-sm opacity-45" disabled>
                   تعديل
                 </Button>
               )}
@@ -619,7 +652,7 @@ export function EmployeeListWorkspace() {
         }
       >
         {drawerEmployee ? <ManagedEmployeeDetail employee={drawerEmployee} onClose={() => setDrawerId(null)} /> : null}
-      </SfDrawer>
+      </WfmDrawer>
     </div>
   );
 }

@@ -2,13 +2,13 @@
 
 namespace App\Domain\Factory\Models;
 
-use App\Domain\Factory\Models\Concerns\BelongsToFactoryUser;
+use App\Domain\Factory\Models\Concerns\TracksAuditorColumns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WasteEntry extends Model
 {
-    use BelongsToFactoryUser;
+    use TracksAuditorColumns;
 
     protected $fillable = [
         'machine_id',
@@ -19,16 +19,16 @@ class WasteEntry extends Model
         'quantity',
         'weight_kg',
         'reason',
-        'created_by_id',
+        'created_by',
         'notes',
     ];
 
     protected function casts(): array
     {
-        return [
+        return array_merge(self::auditorDateCasts(), [
             'entry_date' => 'date',
             'weight_kg' => 'decimal:3',
-        ];
+        ]);
     }
 
     public function machine(): BelongsTo

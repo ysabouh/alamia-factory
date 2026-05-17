@@ -251,14 +251,14 @@ export function EmployeeQuickActions({
           </>
         }
       >
-        <p className="text-sm text-sf-muted">الجزاءات غير مخزنة في Prisma بعد — استخدم الملاحظات أو تكامل الرواتب لاحقاً.</p>
+        <p className="text-sm text-sf-muted">الجزاءات غير مربوطة بتخزين دائم بعد — استخدم الملاحظات أو تكامل الرواتب لاحقاً.</p>
       </SfModal>
 
       <SfModal
         open={suspendOpen}
         onOpenChange={setSuspendOpen}
         title="تعليق الموظف"
-        description="تعيين حالة التوظيف إلى تقييد مهام (SUSP_REST)"
+        description="تعيين حالة التوظيف إلى موقوف مؤقتًا (SUSPENDED)"
         footer={
           <>
             <Button variant="sfGhost" type="button" onClick={() => setSuspendOpen(false)}>

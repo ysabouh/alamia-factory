@@ -1,19 +1,10 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
-
-function authHeaders() {
-  const token = typeof window !== "undefined" ? window.localStorage.getItem("factory_token") : null;
-
-  return {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {})
-  };
-}
+import { getLaravelApiBaseUrl } from "@/lib/api/resolve-api-base";
+import { authFetchHeaders } from "@/lib/auth/factory-auth-api";
 
 export async function postOperation<T>(path: string, payload: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${getLaravelApiBaseUrl()}${path}`, {
     method: "POST",
-    headers: authHeaders(),
+    headers: authFetchHeaders(),
     body: JSON.stringify(payload)
   });
 
@@ -26,9 +17,9 @@ export async function postOperation<T>(path: string, payload: unknown): Promise<
 }
 
 export async function patchOperation<T>(path: string, payload: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${getLaravelApiBaseUrl()}${path}`, {
     method: "PATCH",
-    headers: authHeaders(),
+    headers: authFetchHeaders(),
     body: JSON.stringify(payload)
   });
 

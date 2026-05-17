@@ -2,14 +2,14 @@
 
 namespace App\Domain\Factory\Models;
 
-use App\Domain\Factory\Models\Concerns\BelongsToFactoryUser;
+use App\Domain\Factory\Models\Concerns\TracksAuditorColumns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MaintenanceTicket extends Model
 {
-    use BelongsToFactoryUser;
+    use TracksAuditorColumns;
 
     protected $fillable = [
         'machine_id',
@@ -21,15 +21,15 @@ class MaintenanceTicket extends Model
         'description',
         'downtime_started_at',
         'downtime_ended_at',
-        'created_by_id',
+        'created_by',
     ];
 
     protected function casts(): array
     {
-        return [
+        return array_merge(self::auditorDateCasts(), [
             'downtime_started_at' => 'datetime',
             'downtime_ended_at' => 'datetime',
-        ];
+        ]);
     }
 
     public function machine(): BelongsTo

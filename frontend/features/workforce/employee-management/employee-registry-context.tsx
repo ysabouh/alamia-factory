@@ -5,11 +5,14 @@ import * as React from "react";
 import type { LiveDashboard } from "@/types/factory";
 import { WorkforceApiError, workforceApi } from "@/lib/api/workforce-client";
 
+import type { InitialEmployeeListPayload } from "@/lib/api/fetch-workforce-employees-ssr";
+
 import type { PaginatedMeta, WorkforceCatalogJson } from "./workforce-api-types";
 import type { EmployeeEmploymentStatus, EmployeeFormInput, FullEmployeeEditInput, ManagedEmployee } from "./model";
 import { seedManagedFromDashboard } from "./map-from-ops";
 import {
   createPayloadFromForm,
+  EMPTY_WORKFORCE_CATALOG,
   filterDashboardManagedEmployees,
   listQueryFromFilters,
   managedEmployeeFromApi,
@@ -49,8 +52,8 @@ type Ctx = {
   listMeta: { page: number; pageSize: number; total: number; totalPages: number };
   listLoading: boolean;
   listError: string | null;
-  /** `dashboard` = عرض احتياطي من لوحة Laravel لأن Prisma لا يعيد صفوفًا */
-  listSource: "prisma" | "dashboard";
+  /** `dashboard` = عرض احتياطي من لوحة Laravel عند فشل الاتصال أو صيغة غير متوقعة */
+  listSource: "laravel" | "dashboard";
   hydrated: boolean;
   refetchList: (opts: EmployeeListQuery) => Promise<void>;
   fetchEmployeeOne: (id: string) => Promise<ManagedEmployee>;
@@ -67,11 +70,17 @@ const EmployeeRegistryContext = React.createContext<Ctx | null>(null);
 
 export function EmployeeRegistryProvider({
   children,
-  fallbackDashboard
+  fallbackDashboard,
+  initialCatalog,
+  initialEmployeeList
 }: {
   children: React.ReactNode;
-  /** لوحة Laravel: تُستخدم كعرض احتياطي عندما يكون جدول الموظفين في workforce-api فارغًا */
+  /** لوحة Laravel: عرض احتياطي عند تعذّر تحميل السجل من واجهة الموارد البشرية */
   fallbackDashboard?: LiveDashboard | null;
+  /** كتالوج أقسام/ورديات من الخادم (RSC) عند ضبط ‎LARAVEL_SSR_BEARER_TOKEN‎ — يملأ القوائم قبل المتصفح */
+  initialCatalog?: WorkforceCatalogJson | null;
+  /** أول صفحة موظفين من الخادم (RSC) — يظهر الجدول حتى بدون ‎factory_token‎ في المتصفح */
+  initialEmployeeList?: InitialEmployeeListPayload | null;
 }) {
   const lastListQueryRef = React.useRef<EmployeeListQuery | null>(null);
   const fallbackDashboardRef = React.useRef<LiveDashboard | null>(fallbackDashboard ?? null);
@@ -79,22 +88,29 @@ export function EmployeeRegistryProvider({
     fallbackDashboardRef.current = fallbackDashboard ?? null;
   }, [fallbackDashboard]);
 
-  const [catalog, setCatalog] = React.useState<WorkforceCatalogJson | null>(null);
-  const [catalogLoading, setCatalogLoading] = React.useState(true);
+  const [catalog, setCatalog] = React.useState<WorkforceCatalogJson | null>(() => initialCatalog ?? null);
+  const [catalogLoading, setCatalogLoading] = React.useState(() => initialCatalog == null);
   const [catalogError, setCatalogError] = React.useState<string | null>(null);
 
-  const [employees, setEmployees] = React.useState<ManagedEmployee[]>([]);
-  const [listMeta, setListMeta] = React.useState({ page: 1, pageSize: 20, total: 0, totalPages: 1 });
+  const [employees, setEmployees] = React.useState<ManagedEmployee[]>(() => initialEmployeeList?.employees ?? []);
+  const [listMeta, setListMeta] = React.useState(() => ({
+    page: initialEmployeeList?.meta.page ?? 1,
+    pageSize: initialEmployeeList?.meta.pageSize ?? 20,
+    total: initialEmployeeList?.meta.total ?? 0,
+    totalPages: initialEmployeeList?.meta.totalPages ?? 1
+  }));
   const [listLoading, setListLoading] = React.useState(false);
   const [listError, setListError] = React.useState<string | null>(null);
-  const [listSource, setListSource] = React.useState<"prisma" | "dashboard">("prisma");
+  const [listSource, setListSource] = React.useState<"laravel" | "dashboard">("laravel");
 
-  const hydrated = Boolean(catalog && !catalogLoading && !catalogError);
+  /** لا نربط الجاهزية بـ catalogError — السجل يمكن ملؤه من لوحة Laravel عند الحاجة */
+  const hydrated = Boolean(catalog !== null && !catalogLoading);
 
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
-      setCatalogLoading(true);
+      const hadSsrSeed = Boolean(initialCatalog);
+      if (!hadSsrSeed) setCatalogLoading(true);
       setCatalogError(null);
       try {
         const raw = await workforceApi.loadCatalog();
@@ -102,6 +118,11 @@ export function EmployeeRegistryProvider({
         setCatalog(normalizeWorkforceCatalog(raw));
       } catch (e) {
         if (cancelled) return;
+        setCatalog((prev) =>
+          prev && (prev.halls.length > 0 || prev.departments.length > 0 || prev.jobRoles.length > 0 || prev.statuses.length > 0)
+            ? prev
+            : EMPTY_WORKFORCE_CATALOG
+        );
         setCatalogError(e instanceof Error ? e.message : "فشل تحميل المرجعيات");
       } finally {
         if (!cancelled) setCatalogLoading(false);
@@ -110,14 +131,42 @@ export function EmployeeRegistryProvider({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialCatalog]);
 
   const refetchList = React.useCallback(
     async (opts: EmployeeListQuery) => {
-      if (!catalog) return;
+      const cat = catalog ?? EMPTY_WORKFORCE_CATALOG;
       lastListQueryRef.current = opts;
       setListLoading(true);
       setListError(null);
+
+      const applyDashboardPage = (dashboardSeed: ManagedEmployee[]) => {
+        const filtered = filterDashboardManagedEmployees(
+          dashboardSeed,
+          {
+            search: opts.search,
+            departmentId: opts.departmentId,
+            shiftId: opts.shiftId,
+            jobRoleId: opts.jobRoleId,
+            statusFilter: opts.statusFilter,
+            sortKey: opts.sortUiKey,
+            sortOrder: opts.sortOrder
+          },
+          cat
+        );
+        const total = filtered.length;
+        const totalPages = Math.max(1, Math.ceil(total / opts.pageSize));
+        const pageSafe = Math.min(Math.max(1, opts.page), totalPages);
+        const start = (pageSafe - 1) * opts.pageSize;
+        setListSource("dashboard");
+        setEmployees(filtered.slice(start, start + opts.pageSize));
+        setListMeta({ page: pageSafe, pageSize: opts.pageSize, total, totalPages });
+        setListError(null);
+      };
+
+      const dash = fallbackDashboardRef.current;
+      const dashboardSeed = dash ? seedManagedFromDashboard(dash) : [];
+
       try {
         const q = listQueryFromFilters({
           page: opts.page,
@@ -129,7 +178,7 @@ export function EmployeeRegistryProvider({
           statusFilter: opts.statusFilter,
           sortBy: opts.sortByApi,
           sortOrder: opts.sortOrder,
-          statuses: catalog.statuses
+          statuses: cat.statuses
         });
         const res = await workforceApi.listEmployees(q);
         const rawList = Array.isArray(res.data) ? res.data : [];
@@ -148,39 +197,19 @@ export function EmployeeRegistryProvider({
           totalPages: Math.max(1, Number(m?.totalPages) || 1)
         };
 
-        const apiEmpty = rows.length === 0 && meta.total === 0;
-        const dash = fallbackDashboardRef.current;
-        const dashboardSeed = dash ? seedManagedFromDashboard(dash) : [];
-        const canUseDashboardFallback = Boolean(apiEmpty && catalog && dashboardSeed.length > 0);
-
-        if (canUseDashboardFallback && catalog) {
-          const filtered = filterDashboardManagedEmployees(
-            dashboardSeed,
-            {
-              search: opts.search,
-              departmentId: opts.departmentId,
-              shiftId: opts.shiftId,
-              jobRoleId: opts.jobRoleId,
-              statusFilter: opts.statusFilter,
-              sortKey: opts.sortUiKey,
-              sortOrder: opts.sortOrder
-            },
-            catalog
-          );
-          const total = filtered.length;
-          const totalPages = Math.max(1, Math.ceil(total / opts.pageSize));
-          const pageSafe = Math.min(Math.max(1, opts.page), totalPages);
-          const start = (pageSafe - 1) * opts.pageSize;
-          setListSource("dashboard");
-          setEmployees(filtered.slice(start, start + opts.pageSize));
-          setListMeta({ page: pageSafe, pageSize: opts.pageSize, total, totalPages });
-          setListError(null);
+        /** أي حالة بلا صفوف قابلة للعرض — نعرض احتياط لوحة التحكم إن وُجد */
+        const useDashboard = rows.length === 0 && dashboardSeed.length > 0;
+        if (useDashboard) {
+          applyDashboardPage(dashboardSeed);
+          if (rawList.length > 0) {
+            setListError("تعذّر قراءة صيغة الموظفين من الخادم — يُعرض احتياط لوحة المصنع.");
+          }
           return;
         }
 
-        setListSource("prisma");
+        setListSource("laravel");
         if (rows.length === 0 && meta.total > 0) {
-          setListError("الخادم ي report وجود موظفين لكن تعذّر تحليل الصفوف. راجع إصدار workforce-api.");
+          setListError("الخادم يُبلّغ عن وجود موظفين لكن تعذّر تحليل الصفوف. راجع استجابة واجهة الموارد البشرية.");
         } else if (rows.length === 0 && rawList.length > 0) {
           setListError("استجابة غير متوقعة من الخادم (تعذّر تحويل الصفوف).");
         } else {
@@ -190,11 +219,21 @@ export function EmployeeRegistryProvider({
         setEmployees(rows);
         setListMeta(meta);
       } catch (e) {
-        setListSource("prisma");
         const msg =
           e instanceof WorkforceApiError ? e.message : e instanceof Error ? e.message : "فشل تحميل السجل";
-        setListError(msg);
-        setEmployees([]);
+        if (dashboardSeed.length > 0) {
+          applyDashboardPage(dashboardSeed);
+          setListError(`تعذّر الاتصال بالخادم — عرض بيانات احتياطية: ${msg}`);
+        } else {
+          setListSource("laravel");
+          setListError(
+            msg +
+              (typeof window !== "undefined" && !window.localStorage.getItem("factory_token")
+                ? " — عيّن WORKFORCE_PUBLIC_READ=true في backend/.env (محلي)، أو LARAVEL_SSR_BEARER_TOKEN في frontend/.env.local، أو سجّل دخولاً يضع factory_token."
+                : "")
+          );
+          setEmployees((prev) => (prev.length > 0 ? prev : []));
+        }
       } finally {
         setListLoading(false);
       }
@@ -210,7 +249,7 @@ export function EmployeeRegistryProvider({
   const fetchEmployeeOne = React.useCallback(async (id: string) => {
     const raw = await workforceApi.getEmployee(id);
     const d = parseApiEmployeeDetail(raw);
-    if (!d) throw new Error("Employee payload invalid");
+    if (!d) throw new Error("تعذّر قراءة بيانات الموظف من الخادم");
     return managedEmployeeFromApi(d);
   }, []);
 

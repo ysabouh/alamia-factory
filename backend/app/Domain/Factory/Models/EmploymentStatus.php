@@ -2,6 +2,7 @@
 
 namespace App\Domain\Factory\Models;
 
+use App\Domain\Factory\Models\Concerns\TracksAuditorColumns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -10,12 +11,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class EmploymentStatus extends Model
 {
+    use TracksAuditorColumns;
+
     protected $table = 'employment_statuses';
 
     protected $fillable = [
         'name',
         'code',
     ];
+
+    protected function casts(): array
+    {
+        return self::auditorDateCasts();
+    }
 
     public function employees(): HasMany
     {

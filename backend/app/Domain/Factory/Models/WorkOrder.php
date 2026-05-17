@@ -2,11 +2,14 @@
 
 namespace App\Domain\Factory\Models;
 
+use App\Domain\Factory\Models\Concerns\TracksAuditorColumns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WorkOrder extends Model
 {
+    use TracksAuditorColumns;
+
     protected $fillable = [
         'product_id',
         'code',
@@ -19,9 +22,9 @@ class WorkOrder extends Model
 
     protected function casts(): array
     {
-        return [
+        return array_merge(self::auditorDateCasts(), [
             'due_date' => 'date',
-        ];
+        ]);
     }
 
     public function product(): BelongsTo

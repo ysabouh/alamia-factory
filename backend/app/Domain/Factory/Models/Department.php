@@ -2,12 +2,15 @@
 
 namespace App\Domain\Factory\Models;
 
+use App\Domain\Factory\Models\Concerns\TracksAuditorColumns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Department extends Model
 {
+    use TracksAuditorColumns;
+
     protected $fillable = [
         'hall_id',
         'name',
@@ -18,9 +21,9 @@ class Department extends Model
 
     protected function casts(): array
     {
-        return [
+        return array_merge(self::auditorDateCasts(), [
             'is_active' => 'boolean',
-        ];
+        ]);
     }
 
     public function hall(): BelongsTo

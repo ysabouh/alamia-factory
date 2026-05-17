@@ -3,6 +3,7 @@
 namespace App\Domain\Factory\Models;
 
 use App\Domain\Factory\Enums\MachineStatus;
+use App\Domain\Factory\Models\Concerns\TracksAuditorColumns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Machine extends Model
 {
+    use TracksAuditorColumns;
+
     protected $fillable = [
         'machine_type_id',
         'code',
@@ -23,10 +26,10 @@ class Machine extends Model
 
     protected function casts(): array
     {
-        return [
+        return array_merge(self::auditorDateCasts(), [
             'status' => MachineStatus::class,
             'last_status_changed_at' => 'datetime',
-        ];
+        ]);
     }
 
     public function type(): BelongsTo

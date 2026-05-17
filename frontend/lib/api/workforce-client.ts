@@ -1,9 +1,9 @@
 import type { PaginatedMeta } from "@/features/workforce/employee-management/workforce-api-types";
 
-export const WORKFORCE_API_BASE =
-  process.env.NEXT_PUBLIC_WORKFORCE_API_URL ?? "http://127.0.0.1:4000/api/v1";
+import { getLaravelApiBaseUrl } from "@/lib/api/resolve-api-base";
+import { rawCatalogFromWorkforceMetaResponse } from "@/lib/api/workforce-meta";
+import { authFetchHeaders } from "@/lib/auth/factory-auth-api";
 
-/** يمنع تعليق الواجهة إذا كان Nest غير مشغّل أو المنفذ غير مستجيب */
 const WORKFORCE_FETCH_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_WORKFORCE_FETCH_TIMEOUT_MS ?? "15000");
 
 function withTimeout(signal: AbortSignal | undefined, ms: number): AbortSignal {
@@ -32,12 +32,11 @@ function buildQuery(params: Record<string, string | number | boolean | undefined
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const url = `${WORKFORCE_API_BASE}${path}`;
+  const url = `${getLaravelApiBaseUrl()}${path}`;
   const response = await fetch(url, {
     ...init,
     headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
+      ...authFetchHeaders(),
       ...init?.headers
     },
     cache: "no-store",
@@ -48,9 +47,16 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     let msg = `${response.status} ${response.statusText}`;
     try {
-      const j = JSON.parse(text) as { success?: boolean; message?: string | string[] };
+      const j = JSON.parse(text) as {
+        message?: string | string[];
+        errors?: Record<string, string[]>;
+      };
       if (typeof j.message === "string") msg = j.message;
       else if (Array.isArray(j.message)) msg = j.message.join(", ");
+      else if (j.errors) {
+        const first = Object.values(j.errors)[0];
+        if (Array.isArray(first) && first[0]) msg = String(first[0]);
+      }
     } catch {
       if (text) msg = text.slice(0, 200);
     }
@@ -77,7 +83,7 @@ export async function fetchAllPaged<T>(path: string): Promise<T[]> {
 
 export const workforceApi = {
   listEmployees: (params: Record<string, string | number | boolean | undefined | null>) =>
-    requestJson<PaginatedResponse<unknown>>(`/workforce/employees${buildQuery({ ...params, withRelations: true })}`),
+    requestJson<PaginatedResponse<unknown>>(`/workforce/employees${buildQuery(params)}`),
 
   getEmployee: (id: string) => requestJson<unknown>(`/workforce/employees/${encodeURIComponent(id)}`),
 
@@ -94,13 +100,7 @@ export const workforceApi = {
     requestJson<{ deleted: boolean }>(`/workforce/employees/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
   loadCatalog: async () => {
-    const [halls, departments, shifts, jobRoles, statuses] = await Promise.all([
-      fetchAllPaged<Record<string, unknown>>("/workforce/halls"),
-      fetchAllPaged<Record<string, unknown>>("/workforce/departments"),
-      fetchAllPaged<Record<string, unknown>>("/workforce/shifts"),
-      fetchAllPaged<Record<string, unknown>>("/workforce/job-roles"),
-      fetchAllPaged<Record<string, unknown>>("/workforce/employee-statuses")
-    ]);
-    return { halls, departments, shifts, jobRoles, statuses };
+    const res = await requestJson<unknown>("/workforce/meta");
+    return rawCatalogFromWorkforceMetaResponse(res);
   }
 };

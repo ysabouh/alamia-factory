@@ -13,7 +13,7 @@ class RecordProductionEntry
         return DB::transaction(function () use ($data, $userId): ProductionEntry {
             $entry = ProductionEntry::create([
                 ...$data,
-                'created_by_id' => $userId,
+                'created_by' => $userId,
             ]);
 
             ProductionEntryCreated::dispatch($entry);

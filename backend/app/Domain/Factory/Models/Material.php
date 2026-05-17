@@ -2,10 +2,13 @@
 
 namespace App\Domain\Factory\Models;
 
+use App\Domain\Factory\Models\Concerns\TracksAuditorColumns;
 use Illuminate\Database\Eloquent\Model;
 
 class Material extends Model
 {
+    use TracksAuditorColumns;
+
     protected $fillable = [
         'code',
         'name',
@@ -17,9 +20,9 @@ class Material extends Model
 
     protected function casts(): array
     {
-        return [
+        return array_merge(self::auditorDateCasts(), [
             'minimum_stock' => 'decimal:3',
             'is_active' => 'boolean',
-        ];
+        ]);
     }
 }

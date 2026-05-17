@@ -15,7 +15,7 @@ export type WorkforceJobRoleJson = WorkforceRefJson & { roleLevel: number };
 
 export type WorkforceShiftJson = WorkforceRefJson & { startTime: string; endTime: string };
 
-/** Employee row as returned by Nest + `BigInt.prototype.toJSON` (ids are strings). */
+/** Employee row من واجهة Laravel (معرّفات كنصوص للتوافق مع الواجهة). */
 export type ApiEmployeeDetailJson = {
   id: string;
   employeeNumber: string;
@@ -37,6 +37,7 @@ export type ApiEmployeeDetailJson = {
   employeeStatusId: string | null;
   basicSalary: number;
   overtimeHourRate: number;
+  overtimeFridayHourRate: number;
   performanceScore: number;
   reliabilityScore: number;
   safetyScore: number;
@@ -51,6 +52,14 @@ export type ApiEmployeeDetailJson = {
   jobRole: WorkforceJobRoleJson | null;
   shift: WorkforceShiftJson | null;
   status: WorkforceRefJson | null;
+  systemUser?: {
+    id: number;
+    email: string;
+    name: string;
+    isActive: boolean;
+    roles: string[];
+    permissions: string[];
+  } | null;
 };
 
 export type WorkforceCatalogJson = {
