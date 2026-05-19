@@ -18,4 +18,7 @@ return [
     'master_updated' => 'تم تحديث السجل بنجاح.',
     'master_activated' => 'تم تفعيل السجل.',
     'master_deactivated' => 'تم تعطيل السجل.',
+    'currency_base_immutable' => 'لا يمكن إنشاء عملة مرجعية ثانية — الدولار الأمريكي هو العملة الأساسية.',
+    'currency_base_cannot_deactivate' => 'لا يمكن تعطيل العملة المرجعية (USD).',
+    'attendance_check_in_required' => 'يجب تسجيل الحضور قبل تسجيل الانصراف.',
 ];

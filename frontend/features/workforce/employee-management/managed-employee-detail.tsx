@@ -12,19 +12,31 @@ import {
   Wrench
 } from "lucide-react";
 
-import { SfStatusBadge } from "@/components/smart-factory";
+import { WfmStatusBadge, type WfmBadgeTone } from "@/components/workforce/atlas";
 import { Button } from "@/components/ui/button";
+
+import { formatMoney, formatMoneyUsd } from "@/lib/currency/format-money";
 
 import type { ManagedEmployee } from "./model";
 import { EmployeeSystemAccessCard } from "@/features/access-control/employee-system-access-card";
 
+import { AttendanceStatusIcon, EmploymentStatusIcon } from "./employee-registry-icons";
 import { EmployeeQuickActions } from "./employee-quick-actions";
 
-function attendanceToSfTone(a: ManagedEmployee["attendanceStatus"]) {
-  if (a === "present") return "running" as const;
-  if (a === "late") return "idle" as const;
-  if (a === "absent") return "alarm" as const;
-  return "maintenance" as const;
+const cardClass = "rounded-sm border border-atlas-rule bg-atlas-paper p-4 shadow-atlasCard";
+
+function attendanceTone(a: ManagedEmployee["attendanceStatus"]): WfmBadgeTone {
+  if (a === "present") return "active";
+  if (a === "late") return "warning";
+  if (a === "absent") return "danger";
+  return "info";
+}
+
+function employmentTone(s: ManagedEmployee["status"]): WfmBadgeTone {
+  if (s === "active") return "active";
+  if (s === "probation") return "warning";
+  if (s === "suspended") return "danger";
+  return "neutral";
 }
 
 function statusLabel(s: ManagedEmployee["status"]) {
@@ -50,10 +62,10 @@ export function ManagedEmployeeDetail({
   onEmployeePatched?: (e: ManagedEmployee) => void;
 }) {
   return (
-    <div className="space-y-6 text-sf-copy">
-      <div className="flex flex-col gap-4 border-b border-sf-hairline pb-5 sm:flex-row sm:items-start">
+    <div className="space-y-6 text-atlas-slate">
+      <div className="flex flex-col gap-4 border-b border-atlas-rule pb-5 sm:flex-row sm:items-start">
         <div
-          className="relative h-28 w-28 shrink-0 overflow-hidden rounded-xl border border-sf-stroke/50 bg-sf-panel2 shadow-glowCyan"
+          className="relative h-28 w-28 shrink-0 overflow-hidden rounded-sm border border-atlas-rule bg-atlas-canvas shadow-atlasCard"
           style={{
             backgroundImage: employee.photoUrl
               ? `url(${employee.photoUrl})`
@@ -63,19 +75,20 @@ export function ManagedEmployeeDetail({
           }}
         >
           {!employee.photoUrl ? (
-            <span className="flex h-full items-center justify-center text-2xl font-bold text-sf-ink">
+            <span className="flex h-full items-center justify-center text-2xl font-bold text-atlas-ink">
               {(employee.firstName?.[0] ?? employee.fullName?.[0] ?? "?")}
               {(employee.lastName?.[0] ?? "")}
             </span>
           ) : null}
-          <span className="absolute bottom-2 start-2 rounded-sm bg-black/55 px-1.5 py-0.5 font-mono text-[10px] text-sf-ink">
+          <span className="absolute bottom-2 start-2 rounded-sm bg-atlas-ink/70 px-1.5 py-0.5 font-mono text-[10px] text-white">
             {employee.employeeNumber}
           </span>
         </div>
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xl font-bold text-sf-ink">{employee.fullName}</h2>
-            <SfStatusBadge tone={attendanceToSfTone(employee.attendanceStatus)} pulse={employee.attendanceStatus === "present"}>
+            <h2 className="text-xl font-bold text-atlas-ink">{employee.fullName}</h2>
+            <WfmStatusBadge tone={attendanceTone(employee.attendanceStatus)} className="gap-1.5">
+              <AttendanceStatusIcon state={employee.attendanceStatus} />
               {employee.attendanceStatus === "present"
                 ? "حضور"
                 : employee.attendanceStatus === "late"
@@ -83,17 +96,18 @@ export function ManagedEmployeeDetail({
                   : employee.attendanceStatus === "absent"
                     ? "غياب"
                     : "إجازة"}
-            </SfStatusBadge>
-            <span className="rounded-sm border border-sf-stroke/40 bg-sf-panel px-2 py-0.5 text-[11px] font-semibold text-sf-muted">
+            </WfmStatusBadge>
+            <WfmStatusBadge tone={employmentTone(employee.status)} className="gap-1.5">
+              <EmploymentStatusIcon status={employee.status} />
               {statusLabel(employee.status)}
-            </span>
+            </WfmStatusBadge>
           </div>
-          <p className="text-sm text-sf-muted">{employee.role}</p>
-          <p className="text-xs text-sf-muted">
+          <p className="text-sm text-atlas-muted">{employee.role}</p>
+          <p className="text-xs text-atlas-muted">
             {employee.department} · {employee.hall} · وردية {employee.shift}
           </p>
           {onClose ? (
-            <Button type="button" variant="sfGhost" size="sm" className="mt-2 rounded-lg" onClick={onClose}>
+            <Button type="button" variant="atlasOutline" size="sm" className="mt-2" onClick={onClose}>
               إغلاق اللوحة
             </Button>
           ) : null}
@@ -109,75 +123,73 @@ export function ManagedEmployeeDetail({
 
       <div className="grid gap-4 sm:grid-cols-3">
         {[
-          { label: "الأداء", value: employee.performanceScore, icon: Gauge, color: "text-sf-accentCool" },
-          { label: "الموثوقية", value: employee.reliabilityScore, icon: Shield, color: "text-sf-ok" },
-          { label: "كفاءة الإنتاج", value: employee.productionEff, icon: TrendingUp, color: "text-sf-accent" }
+          { label: "الأداء", value: employee.performanceScore, icon: Gauge, color: "text-atlas-brand" },
+          { label: "الموثوقية", value: employee.reliabilityScore, icon: Shield, color: "text-atlas-success" },
+          { label: "كفاءة الإنتاج", value: employee.productionEff, icon: TrendingUp, color: "text-atlas-accent" }
         ].map((m, i) => (
           <motion.div
             key={m.label}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="rounded-xl border border-sf-hairline bg-sf-panel/60 p-4"
+            className={cardClass}
           >
             <m.icon className={`h-4 w-4 ${m.color}`} aria-hidden />
-            <p className="mt-2 font-mono text-2xl font-bold tabular-nums text-sf-ink">{m.value}</p>
-            <p className="text-[11px] uppercase tracking-wide text-sf-muted">{m.label}</p>
+            <p className="mt-2 font-mono text-2xl font-bold tabular-nums text-atlas-ink">{m.value}</p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-atlas-muted">{m.label}</p>
           </motion.div>
         ))}
       </div>
 
-      <section className="rounded-xl border border-sf-hairline bg-sf-chassis/80 p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-sf-ink">
-          <Calendar className="h-4 w-4 text-sf-accentCool" aria-hidden />
+      <section className={`${cardClass} bg-atlas-canvas/80`}>
+        <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-atlas-ink">
+          <Calendar className="h-4 w-4 text-atlas-brand" aria-hidden />
           ملخص الحضور
         </h3>
         <div className="grid grid-cols-3 gap-3 text-center font-mono text-sm">
           <div>
-            <p className="text-sf-ok">{employee.attendancePresentDays}</p>
-            <p className="text-[10px] text-sf-muted">حضور</p>
+            <p className="text-atlas-success">{employee.attendancePresentDays}</p>
+            <p className="text-[10px] text-atlas-muted">حضور</p>
           </div>
           <div>
-            <p className="text-sf-caution">{employee.attendanceLateDays}</p>
-            <p className="text-[10px] text-sf-muted">تأخر</p>
+            <p className="text-atlas-warning">{employee.attendanceLateDays}</p>
+            <p className="text-[10px] text-atlas-muted">تأخر</p>
           </div>
           <div>
-            <p className="text-sf-alarm">{employee.attendanceAbsentDays}</p>
-            <p className="text-[10px] text-sf-muted">غياب</p>
+            <p className="text-atlas-danger">{employee.attendanceAbsentDays}</p>
+            <p className="text-[10px] text-atlas-muted">غياب</p>
           </div>
         </div>
       </section>
 
       {!compact ? (
         <>
-          <section className="rounded-xl border border-sf-hairline bg-sf-panel/50 p-4">
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-sf-ink">
-              <Wallet className="h-4 w-4 text-sf-accent" aria-hidden />
+          <section className={cardClass}>
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-atlas-ink">
+              <Wallet className="h-4 w-4 text-atlas-brand" aria-hidden />
               الراتب والاستحقاق
             </h3>
             <dl className="grid gap-2 text-sm sm:grid-cols-2">
-              <div className="flex justify-between border-b border-sf-hairline py-2">
-                <dt className="text-sf-muted">الأساسي</dt>
-                <dd className="font-mono text-sf-ink">{employee.salary.toLocaleString("ar-SA")} ﷼</dd>
+              <div className="flex justify-between border-b border-atlas-rule py-2">
+                <dt className="text-atlas-muted">الأساسي</dt>
+                <dd className="font-mono text-atlas-ink">
+                  {formatMoney(employee.salary, { symbol: employee.currencySymbol, code: employee.currencyCode })}
+                </dd>
               </div>
-              <div className="flex justify-between border-b border-sf-hairline py-2">
-                <dt className="text-sf-muted">ساعة إضافي — أيام عادية</dt>
-                <dd className="font-mono text-sf-ink">{employee.overtimeRate} ﷼</dd>
-              </div>
-              <div className="flex justify-between border-b border-sf-hairline py-2">
-                <dt className="text-sf-muted">ساعة إضافي — الجمعة</dt>
-                <dd className="font-mono text-sf-ink">{employee.overtimeFridayRate} ﷼</dd>
+              <div className="flex justify-between border-b border-atlas-rule py-2">
+                <dt className="text-atlas-muted">بالدولار (USD)</dt>
+                <dd className="font-mono text-atlas-ink">{formatMoneyUsd(employee.salaryUsd)}</dd>
               </div>
               <div className="flex justify-between py-2 sm:col-span-2">
-                <dt className="text-sf-muted">رصيد الإجازة السنوية</dt>
-                <dd className="font-mono text-sf-accentCool">{employee.annualLeaveBalance} يوم</dd>
+                <dt className="text-atlas-muted">رصيد الإجازة السنوية</dt>
+                <dd className="font-mono text-atlas-brand">{employee.annualLeaveBalance} يوم</dd>
               </div>
             </dl>
           </section>
 
-          <section className="rounded-xl border border-sf-hairline bg-sf-panel/50 p-4">
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-sf-ink">
-              <Factory className="h-4 w-4 text-sf-accentCool" aria-hidden />
+          <section className={cardClass}>
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-atlas-ink">
+              <Factory className="h-4 w-4 text-atlas-brand" aria-hidden />
               الماكينات المعيّنة
             </h3>
             {employee.assignedMachines.length ? (
@@ -185,24 +197,24 @@ export function ManagedEmployeeDetail({
                 {employee.assignedMachines.map((m) => (
                   <li
                     key={m}
-                    className="rounded-lg border border-sf-stroke/40 bg-sf-deep px-3 py-1 font-mono text-xs text-sf-copy"
+                    className="rounded-lg border border-atlas-rule bg-atlas-canvas px-3 py-1 font-mono text-xs text-atlas-slate"
                   >
                     {m}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-sf-muted">لا توجد ماكينات مباشرة في السجل.</p>
+              <p className="text-sm text-atlas-muted">لا توجد ماكينات مباشرة في السجل.</p>
             )}
           </section>
 
-          <section className="rounded-xl border border-sf-hairline bg-sf-panel/50 p-4">
-            <h3 className="mb-3 text-sm font-bold text-sf-ink">سجل الورديات</h3>
+          <section className={cardClass}>
+            <h3 className="mb-3 text-sm font-bold text-atlas-ink">سجل الورديات</h3>
             <ul className="space-y-2 text-sm">
               {employee.shiftHistory.map((h) => (
-                <li key={h.id} className="flex justify-between border-b border-sf-hairline/80 py-2 last:border-0">
-                  <span className="text-sf-muted">{h.label}</span>
-                  <span className="font-mono text-xs text-sf-copy">
+                <li key={h.id} className="flex justify-between border-b border-atlas-rule/80 py-2 last:border-0">
+                  <span className="text-atlas-muted">{h.label}</span>
+                  <span className="font-mono text-xs text-atlas-slate">
                     {h.from} → {h.to}
                   </span>
                 </li>
@@ -211,8 +223,8 @@ export function ManagedEmployeeDetail({
           </section>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <section className="rounded-xl border border-sf-hairline bg-sf-panel/50 p-4">
-              <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-sf-ok">
+            <section className={cardClass}>
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-atlas-success">
                 <Award className="h-4 w-4" aria-hidden />
                 المكافآت
               </h3>
@@ -220,14 +232,14 @@ export function ManagedEmployeeDetail({
                 {employee.rewards.map((r) => (
                   <li key={r.id} className="flex justify-between">
                     <span>{r.label}</span>
-                    <span className="font-mono text-sf-ok">+{r.amount}</span>
+                    <span className="font-mono text-atlas-success">+{r.amount}</span>
                   </li>
                 ))}
-                {!employee.rewards.length ? <li className="text-sf-muted">لا سجلات</li> : null}
+                {!employee.rewards.length ? <li className="text-atlas-muted">لا سجلات</li> : null}
               </ul>
             </section>
-            <section className="rounded-xl border border-sf-hairline bg-sf-panel/50 p-4">
-              <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-sf-alarm">
+            <section className={cardClass}>
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-atlas-danger">
                 <Wrench className="h-4 w-4" aria-hidden />
                 الجزاءات
               </h3>
@@ -235,23 +247,23 @@ export function ManagedEmployeeDetail({
                 {employee.penalties.map((p) => (
                   <li key={p.id} className="flex justify-between">
                     <span>{p.label}</span>
-                    <span className="text-xs text-sf-muted">{p.severity}</span>
+                    <span className="text-xs text-atlas-muted">{p.severity}</span>
                   </li>
                 ))}
-                {!employee.penalties.length ? <li className="text-sf-muted">لا سجلات</li> : null}
+                {!employee.penalties.length ? <li className="text-atlas-muted">لا سجلات</li> : null}
               </ul>
             </section>
           </div>
 
-          <section className="rounded-xl border border-sf-hairline bg-sf-deep/80 p-4">
-            <h3 className="mb-2 text-sm font-bold text-sf-ink">إحصاءات إنتاجية (مركّبة)</h3>
-            <p className="text-xs text-sf-muted">
-              نقاط المكافأة: <span className="font-mono text-sf-accent">{employee.bonusPoints}</span> · مخالفات:{" "}
-              <span className="font-mono text-sf-alarm">{employee.violations}</span>
+          <section className={`${cardClass} bg-atlas-canvas`}>
+            <h3 className="mb-2 text-sm font-bold text-atlas-ink">إحصاءات إنتاجية (مركّبة)</h3>
+            <p className="text-xs text-atlas-muted">
+              نقاط المكافأة: <span className="font-mono text-atlas-brand">{employee.bonusPoints}</span> · مخالفات:{" "}
+              <span className="font-mono text-atlas-danger">{employee.violations}</span>
             </p>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-sf-panel">
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-atlas-rule">
               <motion.div
-                className="h-full bg-gradient-to-l from-sf-accent to-sf-accentCool"
+                className="h-full bg-gradient-to-l from-atlas-brand to-atlas-accent"
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.min(100, employee.productionEff)}%` }}
                 transition={{ type: "spring", stiffness: 120, damping: 18 }}

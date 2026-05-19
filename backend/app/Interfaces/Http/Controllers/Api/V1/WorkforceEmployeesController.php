@@ -23,6 +23,7 @@ class WorkforceEmployeesController
             'jobRole:id,name,code,role_level',
             'shift:id,name,code,starts_at,ends_at',
             'employmentStatus:id,name,code',
+            'currency:id,code,name,symbol,usd_exchange_rate,is_base',
             'user.roles' => fn ($q) => $q->where('guard_name', 'web'),
             'user.roles.permissions' => fn ($q) => $q->where('guard_name', 'web'),
         ];
@@ -183,8 +184,7 @@ class WorkforceEmployeesController
             'shift_id' => $this->nullableFk($g('shiftId', 'shift_id')),
             'employment_status_id' => $this->nullableFk($g('statusId', 'status_id')),
             'basic_salary' => $this->nullableDecimal($g('basicSalary', 'basic_salary')),
-            'overtime_hour_rate' => $this->nullableDecimal($g('overtimeHourRate', 'overtime_hour_rate')),
-            'overtime_friday_hour_rate' => $this->nullableDecimal($g('overtimeFridayHourRate', 'overtime_friday_hour_rate')),
+            'currency_id' => $this->nullableFk($g('currencyId', 'currency_id')),
             'performance_score' => $this->nullableDecimal($g('performanceScore', 'performance_score')),
             'reliability_score' => $this->nullableDecimal($g('reliabilityScore', 'reliability_score')),
             'safety_score' => $this->nullableDecimal($g('safetyScore', 'safety_score')),
@@ -230,8 +230,7 @@ class WorkforceEmployeesController
             'shiftId' => 'shift_id',
             'statusId' => 'employment_status_id',
             'basicSalary' => 'basic_salary',
-            'overtimeHourRate' => 'overtime_hour_rate',
-            'overtimeFridayHourRate' => 'overtime_friday_hour_rate',
+            'currencyId' => 'currency_id',
             'performanceScore' => 'performance_score',
             'reliabilityScore' => 'reliability_score',
             'safetyScore' => 'safety_score',
@@ -250,7 +249,7 @@ class WorkforceEmployeesController
                 $out[$snake] = $v === '' || $v === null ? null : (int) $v;
             } elseif (in_array($snake, ['birth_date', 'hire_date'], true)) {
                 $out[$snake] = $this->nullableDate($v);
-            } elseif (in_array($snake, ['basic_salary', 'overtime_hour_rate', 'overtime_friday_hour_rate', 'performance_score', 'reliability_score', 'safety_score'], true)) {
+            } elseif (in_array($snake, ['basic_salary', 'performance_score', 'reliability_score', 'safety_score'], true)) {
                 $out[$snake] = $this->nullableDecimal($v);
             } elseif ($snake === 'annual_leave_balance') {
                 $out[$snake] = $this->nullableInt($v);
@@ -335,8 +334,18 @@ class WorkforceEmployeesController
             'shiftId' => $e->shift_id !== null ? (string) $e->shift_id : null,
             'employeeStatusId' => $e->employment_status_id !== null ? (string) $e->employment_status_id : null,
             'basicSalary' => (float) $e->basic_salary,
-            'overtimeHourRate' => (float) $e->overtime_hour_rate,
-            'overtimeFridayHourRate' => (float) ($e->overtime_friday_hour_rate ?? 0),
+            'currencyId' => $e->currency_id !== null ? (string) $e->currency_id : null,
+            'currency' => $e->currency ? [
+                'id' => (string) $e->currency->id,
+                'code' => $e->currency->code,
+                'name' => $e->currency->name,
+                'symbol' => $e->currency->symbol,
+                'usdExchangeRate' => (float) $e->currency->usd_exchange_rate,
+                'isBase' => (bool) $e->currency->is_base,
+            ] : null,
+            'basicSalaryUsd' => $e->currency
+                ? round($e->currency->amountToUsd((float) $e->basic_salary), 2)
+                : round((float) $e->basic_salary, 2),
             'performanceScore' => (float) $e->performance_score,
             'reliabilityScore' => (float) $e->reliability_score,
             'safetyScore' => (float) $e->safety_score,

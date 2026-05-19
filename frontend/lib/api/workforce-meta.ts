@@ -10,6 +10,8 @@ export function rawCatalogFromWorkforceMetaResponse(res: unknown): {
   shifts: Record<string, unknown>[];
   jobRoles: Record<string, unknown>[];
   statuses: Record<string, unknown>[];
+  currencies: Record<string, unknown>[];
+  baseCurrencyCode: string;
 } {
   const root = asRecord(res);
   const data = asRecord(root?.data) ?? root;
@@ -26,11 +28,14 @@ export function rawCatalogFromWorkforceMetaResponse(res: unknown): {
   const employmentStatuses = Array.isArray(d.employmentStatuses)
     ? (d.employmentStatuses as Record<string, unknown>[])
     : [];
+  const currencies = Array.isArray(d.currencies) ? (d.currencies as Record<string, unknown>[]) : [];
   return {
     halls,
     departments,
     shifts,
     jobRoles,
-    statuses: employmentStatuses
+    statuses: employmentStatuses,
+    currencies,
+    baseCurrencyCode: String(d.baseCurrencyCode ?? "USD")
   };
 }

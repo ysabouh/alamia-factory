@@ -19,6 +19,7 @@ import { useFactoryAuth } from "@/contexts/factory-auth-context";
 
 import { EmployeeSystemAccessCard } from "@/features/access-control/employee-system-access-card";
 
+import { defaultCurrencyId } from "./workforce-employee-mapper";
 import { useEmployeeRegistry } from "./employee-registry-context";
 import type { WorkforceCatalogJson } from "./workforce-api-types";
 import {
@@ -45,8 +46,7 @@ const emptyCreate: EmployeeFormInput = {
   jobRoleId: "",
   shiftId: "",
   salary: 4000,
-  overtimeRate: 15,
-  overtimeFridayRate: 22.5,
+  currencyId: "",
   hireDate: new Date().toISOString().slice(0, 10),
   photoUrl: "",
   notes: ""
@@ -194,8 +194,7 @@ function defaultsFromEmployee(e: ManagedEmployee): FullEmployeeEditInput {
     jobRoleId: e.jobRoleId ?? "",
     shiftId: e.shiftId ?? "",
     salary: e.salary,
-    overtimeRate: e.overtimeRate,
-    overtimeFridayRate: e.overtimeFridayRate,
+    currencyId: e.currencyId ?? "",
     hireDate: e.hireDate,
     photoUrl: e.photoUrl ?? "",
     notes: e.notes,
@@ -310,24 +309,18 @@ function SharedFields({
         className="border-atlas-rule/40 bg-atlas-paper/60 text-atlas-slate shadow-atlasCard [&_h3]:text-atlas-ink [&_p]:text-atlas-muted"
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <WfmField id="salary" label="الراتب الأساسي" required error={e.salary?.message}>
+          <WfmField id="currencyId" label="عملة الراتب" required error={e.currencyId?.message}>
+            <WfmSelect id="currencyId" {...register("currencyId")}>
+              <option value="">— اختر العملة —</option>
+              {catalog.currencies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.code}) — 1 USD = {c.usdExchangeRate.toLocaleString("ar")} {c.symbol}
+                </option>
+              ))}
+            </WfmSelect>
+          </WfmField>
+          <WfmField id="salary" label="الراتب الأساسي (بالعملة المختارة)" required error={e.salary?.message}>
             <WfmInput id="salary" type="number" step="0.01" {...register("salary")} monospace />
-          </WfmField>
-          <WfmField
-            id="overtimeRate"
-            label="سعر ساعة إضافي — الأيام العادية"
-            required
-            error={e.overtimeRate?.message}
-          >
-            <WfmInput id="overtimeRate" type="number" step="0.01" {...register("overtimeRate")} monospace />
-          </WfmField>
-          <WfmField
-            id="overtimeFridayRate"
-            label="سعر ساعة إضافي — يوم الجمعة"
-            required
-            error={e.overtimeFridayRate?.message}
-          >
-            <WfmInput id="overtimeFridayRate" type="number" step="0.01" {...register("overtimeFridayRate")} monospace />
           </WfmField>
           <WfmField id="hireDate" label="تاريخ التعيين" required error={e.hireDate?.message}>
             <WfmInput id="hireDate" type="date" {...register("hireDate")} />
@@ -392,7 +385,8 @@ export function ManagedEmployeeCreateForm() {
       hallId: catalog.halls[0]?.id ?? "",
       departmentId: catalog.departments[0]?.id ?? "",
       jobRoleId: catalog.jobRoles[0]?.id ?? "",
-      shiftId: catalog.shifts[0]?.id ?? ""
+      shiftId: catalog.shifts[0]?.id ?? "",
+      currencyId: defaultCurrencyId(catalog)
     });
   }, [catalog, form]);
 

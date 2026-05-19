@@ -52,10 +52,10 @@ export interface ManagedEmployee {
   employeeStatusId: string | null;
   isActive: boolean;
   salary: number;
-  /** سعر الساعة الإضافية — أيام عادية */
-  overtimeRate: number;
-  /** سعر الساعة الإضافية — يوم الجمعة */
-  overtimeFridayRate: number;
+  currencyId: string | null;
+  currencyCode: string;
+  currencySymbol: string;
+  salaryUsd: number;
   hireDate: string;
   photoUrl: string | null;
   notes: string;
@@ -120,8 +120,7 @@ export const employeeFormSchema = z.object({
   jobRoleId: z.string().default(""),
   shiftId: z.string().default(""),
   salary: z.coerce.number().min(0),
-  overtimeRate: z.coerce.number().min(0),
-  overtimeFridayRate: z.coerce.number().min(0),
+  currencyId: z.string().min(1, "اختر العملة"),
   hireDate: z.string().min(1, "مطلوب"),
   photoUrl: z.string().max(4_000_000).default(""),
   notes: z.string().default("")

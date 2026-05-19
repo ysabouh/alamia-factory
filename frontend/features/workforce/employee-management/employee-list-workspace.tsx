@@ -5,16 +5,26 @@ import type { Route } from "next";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowUp,
+  Ban,
+  Building2,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Eye,
   Pencil,
   Plus,
+  RotateCcw,
   Search,
+  Shuffle,
   Trash2,
-  Users
+  Users,
+  UserX,
+  X,
+  XCircle
 } from "lucide-react";
 
 import {
@@ -39,9 +49,17 @@ import { useFactoryAuth } from "@/contexts/factory-auth-context";
 import { useEmployeeRegistry } from "./employee-registry-context";
 import { ManagedEmployeeDetail } from "./managed-employee-detail";
 import type { EmployeeEmploymentStatus, ManagedEmployee } from "./model";
-import { mapUiSortKeyToApi, statusIdForUi, type DashboardEmployeeSortKey } from "./workforce-employee-mapper";
+import { AttendanceStatusIcon, EmploymentStatusIcon, RegistryIconButton } from "./employee-registry-icons";
+import {
+  mapUiSortKeyToApi,
+  patchForEmploymentStatus,
+  type DashboardEmployeeSortKey
+} from "./workforce-employee-mapper";
 
 const PAGE_SIZE = 20;
+
+const rowCheckboxClass =
+  "size-4 shrink-0 cursor-pointer rounded border-atlas-rule bg-atlas-paper text-atlas-brand accent-atlas-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-atlas-brand/35 disabled:cursor-not-allowed disabled:opacity-50";
 
 type SortKey = keyof Pick<
   ManagedEmployee,
@@ -102,6 +120,8 @@ export function EmployeeListWorkspace() {
   const [bulkShiftId, setBulkShiftId] = useState("");
   const [bulkDeptId, setBulkDeptId] = useState("");
   const [deleteBusy, setDeleteBusy] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkActionError, setBulkActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!catalog) return;
@@ -175,33 +195,55 @@ export function EmployeeListWorkspace() {
 
   const selectedList = useMemo(() => employees.filter((e) => selected.has(e.id)), [employees, selected]);
 
-  const bulkSuspend = async () => {
-    if (listSource === "dashboard") return;
-    if (!catalog) return;
-    const sid = statusIdForUi("suspended", catalog.statuses);
-    if (!sid) return;
-    await bulkPatchEmployees(
-      selectedList.map((e) => e.id),
-      { statusId: sid, isActive: true }
-    );
-    setSelected(new Set());
-    runQuery();
+  const apiLocked = listSource === "dashboard";
+
+  const applyBulkPatch = async (patch: Record<string, unknown> | null, actionLabel?: string) => {
+    if (apiLocked || selectedList.length === 0) return;
+    if (!patch) {
+      setBulkActionError(
+        actionLabel
+          ? `تعذّر تطبيق «${actionLabel}» — تحقق من مرجعيات حالات التوظيف (ACTIVE / ON_LEAVE / LATE).`
+          : "تعذّر بناء طلب التحديث — المرجعيات غير مكتملة."
+      );
+      return;
+    }
+    setBulkActionError(null);
+    setBulkBusy(true);
+    try {
+      await bulkPatchEmployees(
+        selectedList.map((e) => e.id),
+        patch
+      );
+      setSelected(new Set());
+      runQuery();
+    } catch (e) {
+      setBulkActionError(e instanceof Error ? e.message : "فشل تحديث الموظفين المحددين");
+    } finally {
+      setBulkBusy(false);
+    }
   };
 
+  const bulkEmploymentStatus = (status: ManagedEmployee["status"]) => {
+    if (!catalog) return;
+    const labels: Record<ManagedEmployee["status"], string> = {
+      active: "نشط",
+      probation: "مراقبة",
+      suspended: "موقوف",
+      terminated: "منتهي"
+    };
+    void applyBulkPatch(patchForEmploymentStatus(status, catalog.statuses), labels[status]);
+  };
+
+  const bulkReactivate = () => bulkEmploymentStatus("active");
+
   const bulkShiftApply = async () => {
-    if (listSource === "dashboard") return;
     if (!bulkShiftId) return;
-    await bulkPatchEmployees(selectedList.map((e) => e.id), { shiftId: bulkShiftId });
-    setSelected(new Set());
-    runQuery();
+    await applyBulkPatch({ shiftId: bulkShiftId });
   };
 
   const bulkDeptApply = async () => {
-    if (listSource === "dashboard") return;
     if (!bulkDeptId) return;
-    await bulkPatchEmployees(selectedList.map((e) => e.id), { departmentId: bulkDeptId });
-    setSelected(new Set());
-    runQuery();
+    await applyBulkPatch({ departmentId: bulkDeptId });
   };
 
   if (catalogLoading || !hydrated) {
@@ -382,7 +424,7 @@ export function EmployeeListWorkspace() {
                 type="checkbox"
                 checked={allPageSelected}
                 onChange={toggleAllPage}
-                className="size-4 rounded border-sf-stroke bg-sf-panel accent-sf-accentCool"
+                className={rowCheckboxClass}
                 aria-label="تحديد الصفحة"
               />
             </WfmTableHead>
@@ -409,13 +451,18 @@ export function EmployeeListWorkspace() {
           ) : null}
           {!listLoading &&
             pageRows.map((e) => (
-              <WfmTableRow key={e.id} className={cn(selected.has(e.id) && "bg-sf-accent/5")}>
+              <WfmTableRow
+                key={e.id}
+                className={cn(
+                  selected.has(e.id) && "bg-atlas-brand/[0.06] ring-1 ring-inset ring-atlas-brand/15"
+                )}
+              >
                 <WfmTableCell>
                   <input
                     type="checkbox"
                     checked={selected.has(e.id)}
                     onChange={() => toggleOne(e.id)}
-                    className="size-4 rounded border-sf-stroke bg-sf-panel accent-sf-accentCool"
+                    className={rowCheckboxClass}
                     aria-label={`تحديد ${e.fullName}`}
                   />
                 </WfmTableCell>
@@ -444,13 +491,21 @@ export function EmployeeListWorkspace() {
                 <WfmTableCell className="text-atlas-muted">{e.hall}</WfmTableCell>
                 <WfmTableCell className="text-atlas-slate">{e.shift}</WfmTableCell>
                 <WfmTableCell>
-                  <WfmStatusBadge tone={employmentTone(e.status)}>
-                    {e.status === "active" ? "نشط" : e.status === "suspended" ? "موقوف" : e.status === "probation" ? "مراقبة" : "منتهي"}
+                  <WfmStatusBadge tone={employmentTone(e.status)} className="gap-1.5">
+                    <EmploymentStatusIcon status={e.status} />
+                    {e.status === "active"
+                      ? "نشط"
+                      : e.status === "suspended"
+                        ? "موقوف"
+                        : e.status === "probation"
+                          ? "مراقبة"
+                          : "منتهي"}
                   </WfmStatusBadge>
                 </WfmTableCell>
                 <WfmTableCell className="font-mono text-atlas-brand">{e.performanceScore}</WfmTableCell>
                 <WfmTableCell>
-                  <WfmStatusBadge tone={attendanceTone(e.attendanceStatus)}>
+                  <WfmStatusBadge tone={attendanceTone(e.attendanceStatus)} className="gap-1.5">
+                    <AttendanceStatusIcon state={e.attendanceStatus} />
                     {e.attendanceStatus === "present"
                       ? "حاضر"
                       : e.attendanceStatus === "late"
@@ -549,72 +604,171 @@ export function EmployeeListWorkspace() {
       <AnimatePresence>
         {selected.size > 0 ? (
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
-            className="fixed bottom-6 start-1/2 z-50 flex w-[min(96vw,840px)] -translate-x-1/2 flex-col gap-3 rounded-2xl border border-atlas-rule bg-sf-chassis/95 px-4 py-3 shadow-atlasCard backdrop-blur-md rtl:translate-x-1/2"
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ type: "spring", stiffness: 380, damping: 28 }}
+            className="fixed bottom-5 start-1/2 z-50 w-[min(96vw,52rem)] -translate-x-1/2 rtl:translate-x-1/2"
+            role="region"
+            aria-label="إجراءات جماعية على الموظفين المحددين"
           >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm font-semibold text-atlas-ink">{selected.size} محدد</span>
-              <Button type="button" variant="atlasOutline" size="sm" className="rounded-lg" onClick={() => setSelected(new Set())}>
-                إلغاء التحديد
-              </Button>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="sfMuted"
-                size="sm"
-                className="rounded-lg"
-                disabled={listSource === "dashboard"}
-                onClick={bulkSuspend}
-              >
-                تعليق الجماعي
-              </Button>
-              <WfmSelect
-                value={bulkShiftId}
-                onChange={(e) => setBulkShiftId(e.target.value)}
-                className="min-w-[160px]"
-                disabled={listSource === "dashboard"}
-              >
-                {(catalog?.shifts ?? []).map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </WfmSelect>
-              <Button
-                type="button"
-                variant="sfMuted"
-                size="sm"
-                className="rounded-lg"
-                disabled={listSource === "dashboard"}
-                onClick={bulkShiftApply}
-              >
-                تعيين وردية
-              </Button>
-              <WfmSelect
-                value={bulkDeptId}
-                onChange={(e) => setBulkDeptId(e.target.value)}
-                className="min-w-[180px]"
-                disabled={listSource === "dashboard"}
-              >
-                {(catalog?.departments ?? []).map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </WfmSelect>
-              <Button
-                type="button"
-                variant="sfMuted"
-                size="sm"
-                className="rounded-lg"
-                disabled={listSource === "dashboard"}
-                onClick={bulkDeptApply}
-              >
-                نقل قسم
-              </Button>
+            <div className="overflow-hidden rounded-sm border border-atlas-rule bg-atlas-paper shadow-atlasLift">
+              <div className="flex flex-col items-center gap-3 border-b border-atlas-rule bg-atlas-canvas/50 px-4 py-4 text-center">
+                <div className="flex items-center justify-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-atlas-brand/25 bg-atlas-brand/10 text-atlas-brand">
+                    <Users className="h-5 w-5" aria-hidden />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-atlas-ink">
+                      <span className="font-mono tabular-nums text-atlas-brand">{selected.size}</span> موظف محدد
+                    </p>
+                    <p className="text-[11px] text-atlas-muted">إجراءات جماعية على التحديد الحالي</p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="atlasOutline"
+                  className="min-w-[12rem] rounded-sm border-atlas-rule bg-atlas-paper px-6 py-2 text-sm font-semibold text-atlas-ink shadow-sm ring-1 ring-atlas-brand/15 hover:bg-atlas-canvas hover:ring-atlas-brand/30"
+                  onClick={() => {
+                    setSelected(new Set());
+                    setBulkActionError(null);
+                  }}
+                >
+                  <X className="h-4 w-4 text-atlas-muted" aria-hidden />
+                  إلغاء التحديد
+                </Button>
+              </div>
+
+              <div className="space-y-4 border-t border-atlas-rule px-4 py-3">
+                <div>
+                  <p className="mb-2 text-center text-[11px] font-medium text-atlas-muted">حالة التوظيف</p>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <RegistryIconButton
+                      icon={RotateCcw}
+                      label="إعادة نشط"
+                      tone="brand"
+                      highlight
+                      disabled={apiLocked || bulkBusy}
+                      onClick={bulkReactivate}
+                    />
+                    <RegistryIconButton
+                      icon={CheckCircle2}
+                      label="نشط"
+                      tone="success"
+                      disabled={apiLocked || bulkBusy}
+                      onClick={() => bulkEmploymentStatus("active")}
+                    />
+                    <RegistryIconButton
+                      icon={AlertTriangle}
+                      label="مراقبة"
+                      tone="warning"
+                      disabled={apiLocked || bulkBusy}
+                      onClick={() => bulkEmploymentStatus("probation")}
+                    />
+                    <RegistryIconButton
+                      icon={Ban}
+                      label="موقوف"
+                      tone="danger"
+                      disabled={apiLocked || bulkBusy}
+                      onClick={() => bulkEmploymentStatus("suspended")}
+                    />
+                    <RegistryIconButton
+                      icon={UserX}
+                      label="منتهي"
+                      tone="neutral"
+                      disabled={apiLocked || bulkBusy}
+                      onClick={() => bulkEmploymentStatus("terminated")}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[11px] font-medium text-atlas-muted">الحضور اليومي</p>
+                  <p className="mt-1 text-xs text-atlas-slate">
+                    سجّل الحضور من{" "}
+                    <Link href={"/ar/workforce/attendance/daily" as Route} className="font-semibold text-atlas-brand underline">
+                      صفحة الحضور اليومي
+                    </Link>
+                    .
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-4 border-t border-atlas-rule pt-3 sm:flex-row sm:flex-wrap sm:items-end">
+                <div className="flex min-w-[200px] flex-1 flex-col gap-1.5 sm:max-w-[240px]">
+                  <span className="flex items-center gap-1 text-[11px] font-medium text-atlas-muted">
+                    <Shuffle className="h-3 w-3 text-atlas-brand" aria-hidden />
+                    الوردية
+                  </span>
+                  <div className="flex gap-2">
+                    <WfmSelect
+                      value={bulkShiftId}
+                      onChange={(e) => setBulkShiftId(e.target.value)}
+                      className="min-w-0 flex-1"
+                      disabled={apiLocked || bulkBusy}
+                    >
+                      {(catalog?.shifts ?? []).map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </WfmSelect>
+                    <Button
+                      type="button"
+                      variant="atlasPrimary"
+                      size="sm"
+                      className="shrink-0 rounded-sm"
+                      disabled={apiLocked || bulkBusy}
+                      onClick={bulkShiftApply}
+                    >
+                      تعيين
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex min-w-[200px] flex-1 flex-col gap-1.5 sm:max-w-[260px]">
+                  <span className="flex items-center gap-1 text-[11px] font-medium text-atlas-muted">
+                    <Building2 className="h-3 w-3 text-atlas-brand" aria-hidden />
+                    القسم
+                  </span>
+                  <div className="flex gap-2">
+                    <WfmSelect
+                      value={bulkDeptId}
+                      onChange={(e) => setBulkDeptId(e.target.value)}
+                      className="min-w-0 flex-1"
+                      disabled={apiLocked || bulkBusy}
+                    >
+                      {(catalog?.departments ?? []).map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </WfmSelect>
+                    <Button
+                      type="button"
+                      variant="atlasPrimary"
+                      size="sm"
+                      className="shrink-0 rounded-sm"
+                      disabled={apiLocked || bulkBusy}
+                      onClick={bulkDeptApply}
+                    >
+                      نقل
+                    </Button>
+                  </div>
+                </div>
+                </div>
+
+                {bulkActionError ? (
+                  <p className="text-center text-[11px] text-atlas-danger" role="alert">
+                    {bulkActionError}
+                  </p>
+                ) : null}
+
+                {apiLocked ? (
+                  <p className="text-center text-[11px] text-atlas-warning">
+                    الإجراءات الجماعية متاحة عند الاتصال بسجل الموظفين من الخادم.
+                  </p>
+                ) : null}
+              </div>
             </div>
           </motion.div>
         ) : null}
@@ -639,11 +793,11 @@ export function EmployeeListWorkspace() {
                 </Button>
               )}
               {listSource === "laravel" ? (
-                <Button asChild variant="sfCool" className="flex-1 rounded-sm">
+                <Button asChild variant="atlasOutline" className="flex-1 rounded-sm">
                   <Link href={`/ar/workforce/employees/${encodeURIComponent(drawerEmployee.id)}/edit` as Route}>تعديل</Link>
                 </Button>
               ) : (
-                <Button type="button" variant="sfCool" className="flex-1 rounded-sm opacity-45" disabled>
+                <Button type="button" variant="atlasOutline" className="flex-1 rounded-sm opacity-45" disabled>
                   تعديل
                 </Button>
               )}

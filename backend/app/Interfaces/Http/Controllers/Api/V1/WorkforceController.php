@@ -3,6 +3,7 @@
 namespace App\Interfaces\Http\Controllers\Api\V1;
 
 use App\Application\Workforce\BuildWorkforceRoster;
+use App\Domain\Factory\Models\Currency;
 use App\Domain\Factory\Models\Department;
 use App\Domain\Factory\Models\Employee;
 use App\Domain\Factory\Models\EmploymentStatus;
@@ -76,6 +77,22 @@ class WorkforceController
                 'code' => $s->code,
             ]);
 
+        $currencies = Currency::query()
+            ->where('is_active', true)
+            ->orderByDesc('is_base')
+            ->orderBy('code')
+            ->get(['id', 'code', 'name', 'symbol', 'usd_exchange_rate', 'is_base'])
+            ->map(fn (Currency $c): array => [
+                'id' => (string) $c->id,
+                'code' => $c->code,
+                'name' => $c->name,
+                'symbol' => $c->symbol,
+                'usdExchangeRate' => (float) $c->usd_exchange_rate,
+                'isBase' => (bool) $c->is_base,
+            ]);
+
+        $baseCurrency = Currency::query()->where('is_base', true)->first();
+
         return response()->json([
             'data' => [
                 'halls' => $halls,
@@ -83,6 +100,8 @@ class WorkforceController
                 'jobRoles' => $jobRoles,
                 'shifts' => $shifts,
                 'employmentStatuses' => $statuses,
+                'currencies' => $currencies,
+                'baseCurrencyCode' => $baseCurrency?->code ?? config('factory.currency.base_code', 'USD'),
             ],
         ]);
     }

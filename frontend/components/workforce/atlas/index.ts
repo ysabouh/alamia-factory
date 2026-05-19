@@ -3,6 +3,7 @@ export { WfmField } from "./workforce-field";
 export { WfmInput, WfmSelect, WfmTextarea } from "./workforce-atlas-field";
 export { WfmModal } from "./workforce-modal";
 export { WfmPageHeader } from "./workforce-page-header";
+export { WfmRegistryHeader } from "./workforce-registry-header";
 export { WfmStatusBadge, type WfmBadgeTone } from "./workforce-status-badge";
 export {
   WfmTable,

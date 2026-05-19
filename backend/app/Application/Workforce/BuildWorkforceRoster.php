@@ -81,7 +81,6 @@ class BuildWorkforceRoster
             'machineCode' => $machineCode,
             'avatarHue' => $this->hueFromSeed($employee->full_name.(string) $employee->id),
             'basicSalary' => round((float) $employee->basic_salary, 2),
-            'overtimeHourRate' => round((float) $employee->overtime_hour_rate, 2),
             'annualLeaveBalance' => (int) $employee->annual_leave_balance,
             'employeeCode' => $employee->code,
         ];

@@ -41,6 +41,16 @@ class DatabaseSeeder extends Seeder
             'workforce.manage_placement',
             'workforce.manage_employees',
             'workforce.manage_masters',
+            'attendance.view',
+            'attendance.record',
+            'attendance.manage',
+            'attendance.approve',
+            'overtime.request',
+            'overtime.approve',
+            'overtime.delete',
+            'payroll.view',
+            'payroll.generate',
+            'shifts.assign',
         ];
 
         $guard = 'web';
@@ -60,9 +70,36 @@ class DatabaseSeeder extends Seeder
             'maintenance.open_ticket',
             'inventory.view',
             'workforce.view',
+            'attendance.view',
+            'attendance.record',
+            'attendance.approve',
+            'overtime.approve',
+        ]);
+
+        Role::findOrCreate('hr_manager', $guard)->givePermissionTo([
+            'workforce.view',
+            'workforce.manage_employees',
+            'workforce.manage_masters',
+            'attendance.view',
+            'attendance.record',
+            'attendance.manage',
+            'attendance.approve',
+            'overtime.request',
+            'overtime.approve',
+            'payroll.view',
+            'payroll.generate',
+            'shifts.assign',
+        ]);
+
+        Role::findOrCreate('employee', $guard)->givePermissionTo([
+            'attendance.view',
+            'attendance.record',
+            'overtime.request',
         ]);
 
         $this->seedWorkforceReferenceGraph();
+
+        $this->call(AttendancePayrollSeeder::class);
 
         $employee = Employee::firstOrCreate(
             ['code' => 'EMP-001'],
@@ -126,6 +163,8 @@ class DatabaseSeeder extends Seeder
         Warehouse::firstOrCreate(['code' => 'MAIN'], ['name' => 'المستودع الرئيسي', 'type' => 'general']);
 
         $this->bootstrapWorkforcePeople($employee);
+
+        $this->call(CurrencySeeder::class);
     }
 
     /**
@@ -185,6 +224,7 @@ class DatabaseSeeder extends Seeder
         foreach ([
             ['نشيط', 'ACTIVE'],
             ['إجازة', 'ON_LEAVE'],
+            ['متأخر', 'LATE'],
             ['موقوف مؤقتًا', 'SUSPENDED'],
             ['موقوف نهائيًا', 'TERMINATED'],
         ] as [$name, $code]) {
@@ -214,7 +254,6 @@ class DatabaseSeeder extends Seeder
             'employment_status_id' => $active->id,
             'hire_date' => '2020-03-01',
             'basic_salary' => 1850,
-            'overtime_hour_rate' => 7.25,
             'performance_score' => 94,
             'reliability_score' => 96,
             'safety_score' => 93,
@@ -245,7 +284,6 @@ class DatabaseSeeder extends Seeder
             'shift_id' => $morning->id,
             'employment_status_id' => $active->id,
             'basic_salary' => 1280,
-            'overtime_hour_rate' => 5.75,
             'performance_score' => 91,
             'reliability_score' => 89,
             'safety_score' => 90,
@@ -272,7 +310,6 @@ class DatabaseSeeder extends Seeder
             'shift_id' => $eveningShift->id,
             'employment_status_id' => $active->id,
             'basic_salary' => 820,
-            'overtime_hour_rate' => 3.5,
             'performance_score' => 88,
             'reliability_score' => 87,
             'safety_score' => 92,

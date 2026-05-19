@@ -92,6 +92,19 @@ export function parseApiEmployeeDetail(raw: unknown): ApiEmployeeDetailJson | nu
 
   const status = refFromJson(o.status ?? o.employeeStatus);
 
+  const currencyRaw = asRecord(o.currency);
+  const currency =
+    currencyRaw && str(currencyRaw.id) && str(currencyRaw.code)
+      ? {
+          id: str(currencyRaw.id)!,
+          code: str(currencyRaw.code)!,
+          name: str(currencyRaw.name) ?? str(currencyRaw.code)!,
+          symbol: str(currencyRaw.symbol) ?? str(currencyRaw.code)!,
+          usdExchangeRate: num(currencyRaw.usdExchangeRate, 1),
+          isBase: Boolean(currencyRaw.isBase)
+        }
+      : null;
+
   const systemUser = parseSystemUser(o.systemUser);
 
   return {
@@ -114,8 +127,9 @@ export function parseApiEmployeeDetail(raw: unknown): ApiEmployeeDetailJson | nu
     shiftId: str(o.shiftId),
     employeeStatusId: str(o.employeeStatusId),
     basicSalary: num(o.basicSalary),
-    overtimeHourRate: num(o.overtimeHourRate),
-    overtimeFridayHourRate: num(o.overtimeFridayHourRate),
+    currencyId: str(o.currencyId),
+    currency,
+    basicSalaryUsd: num(o.basicSalaryUsd, num(o.basicSalary)),
     performanceScore: num(o.performanceScore),
     reliabilityScore: num(o.reliabilityScore),
     safetyScore: num(o.safetyScore),
@@ -156,18 +170,75 @@ export function uiStatusFromApi(row: ApiEmployeeDetailJson): EmployeeEmploymentS
 }
 
 export function attendanceFromApi(row: ApiEmployeeDetailJson): AttendanceState {
+  if (!row.isActive) return "absent";
   const code = row.status?.code?.toUpperCase() ?? "";
   if (code === "ON_LEAVE") return "leave";
-  if (!row.isActive) return "absent";
+  if (code === "LATE" || code === "TARDY") return "late";
   return "present";
 }
 
+export function statusIdByCodes(statuses: WorkforceRefJson[], codes: string[]): string | undefined {
+  const want = new Set(codes.map((c) => c.toUpperCase()));
+  return statuses.find((s) => want.has(s.code.toUpperCase()))?.id;
+}
+
 export function statusIdForUi(s: EmployeeEmploymentStatus, statuses: WorkforceRefJson[]): string | undefined {
-  const by = (code: string) => statuses.find((x) => x.code.toUpperCase() === code)?.id;
-  if (s === "active") return by("ACTIVE");
-  if (s === "probation") return by("PROBATION");
-  if (s === "suspended") return by("SUSP_REST");
-  return by("ACTIVE");
+  if (s === "active") return statusIdByCodes(statuses, ["ACTIVE"]);
+  if (s === "probation") return statusIdByCodes(statuses, ["PROBATION"]);
+  if (s === "suspended") return statusIdByCodes(statuses, ["SUSP_REST", "SUSPENDED"]);
+  return statusIdByCodes(statuses, ["ACTIVE"]);
+}
+
+/** PATCH payload for bulk employment status (Laravel workforce API). */
+export function patchForEmploymentStatus(
+  status: EmployeeEmploymentStatus,
+  statuses: WorkforceRefJson[]
+): Record<string, unknown> | null {
+  switch (status) {
+    case "active": {
+      const id = statusIdByCodes(statuses, ["ACTIVE"]);
+      return id ? { statusId: id, isActive: true } : null;
+    }
+    case "probation": {
+      const id = statusIdByCodes(statuses, ["PROBATION"]);
+      return id ? { statusId: id, isActive: true } : null;
+    }
+    case "suspended": {
+      const id = statusIdByCodes(statuses, ["SUSP_REST", "SUSPENDED"]);
+      return id ? { statusId: id, isActive: true } : null;
+    }
+    case "terminated": {
+      const id = statusIdByCodes(statuses, ["TERMINATED"]);
+      if (id) return { statusId: id, isActive: false };
+      return { isActive: false };
+    }
+    default:
+      return null;
+  }
+}
+
+/** PATCH payload for bulk attendance rollup (via employment status + isActive until attendance API). */
+export function patchForAttendanceState(
+  state: AttendanceState,
+  statuses: WorkforceRefJson[]
+): Record<string, unknown> | null {
+  const activeId = statusIdByCodes(statuses, ["ACTIVE"]);
+  const leaveId = statusIdByCodes(statuses, ["ON_LEAVE"]);
+  const lateId = statusIdByCodes(statuses, ["LATE", "TARDY"]);
+
+  switch (state) {
+    case "present":
+      return activeId ? { statusId: activeId, isActive: true } : null;
+    case "late":
+      if (lateId) return { statusId: lateId, isActive: true };
+      return activeId ? { statusId: activeId, isActive: true } : null;
+    case "leave":
+      return leaveId ? { statusId: leaveId, isActive: true } : null;
+    case "absent":
+      return activeId ? { statusId: activeId, isActive: false } : { isActive: false };
+    default:
+      return null;
+  }
 }
 
 export function managedEmployeeFromApi(row: ApiEmployeeDetailJson): ManagedEmployee {
@@ -193,8 +264,10 @@ export function managedEmployeeFromApi(row: ApiEmployeeDetailJson): ManagedEmplo
     role: row.jobRole?.name ?? "—",
     shift: shiftLabel,
     salary: row.basicSalary,
-    overtimeRate: row.overtimeHourRate,
-    overtimeFridayRate: row.overtimeFridayHourRate,
+    currencyId: row.currencyId,
+    currencyCode: row.currency?.code ?? "USD",
+    currencySymbol: row.currency?.symbol ?? "$",
+    salaryUsd: row.basicSalaryUsd,
     hireDate: row.hireDate || fromHire,
     photoUrl: row.profileImage?.trim() ? row.profileImage : null,
     notes: row.notes ?? "",
@@ -223,12 +296,19 @@ export function managedEmployeeFromApi(row: ApiEmployeeDetailJson): ManagedEmplo
   };
 }
 
+export function defaultCurrencyId(catalog: WorkforceCatalogJson): string {
+  const preferred = catalog.currencies.find((c) => c.code === "SYP") ?? catalog.currencies.find((c) => !c.isBase);
+  return preferred?.id ?? catalog.currencies[0]?.id ?? "";
+}
+
 export function normalizeWorkforceCatalog(raw: {
   halls: Record<string, unknown>[];
   departments: Record<string, unknown>[];
   shifts: Record<string, unknown>[];
   jobRoles: Record<string, unknown>[];
   statuses: Record<string, unknown>[];
+  currencies?: Record<string, unknown>[];
+  baseCurrencyCode?: string;
 }): WorkforceCatalogJson {
   const halls: WorkforceRefJson[] = raw.halls.map((r) => ({
     id: String(r.id),
@@ -258,7 +338,23 @@ export function normalizeWorkforceCatalog(raw: {
     name: String(r.name),
     code: String(r.code ?? "")
   }));
-  return { halls, departments, shifts, jobRoles, statuses };
+  const currencies = (raw.currencies ?? []).map((r) => ({
+    id: String(r.id),
+    code: String(r.code ?? ""),
+    name: String(r.name ?? ""),
+    symbol: String(r.symbol ?? ""),
+    usdExchangeRate: num(r.usdExchangeRate, 1),
+    isBase: Boolean(r.isBase)
+  }));
+  return {
+    halls,
+    departments,
+    shifts,
+    jobRoles,
+    statuses,
+    currencies,
+    baseCurrencyCode: String(raw.baseCurrencyCode ?? "USD")
+  };
 }
 
 export function createPayloadFromForm(
@@ -284,8 +380,7 @@ export function createPayloadFromForm(
     ...(data.jobRoleId?.trim() ? { jobRoleId: data.jobRoleId.trim() } : {}),
     ...(data.shiftId?.trim() ? { shiftId: data.shiftId.trim() } : {}),
     basicSalary: data.salary,
-    overtimeHourRate: data.overtimeRate,
-    overtimeFridayHourRate: data.overtimeFridayRate,
+    currencyId: data.currencyId.trim(),
     profileImage: data.photoUrl?.trim() ? data.photoUrl.trim() : undefined,
     notes: data.notes?.trim() ? data.notes : undefined,
     isActive: true
@@ -314,8 +409,7 @@ export function patchPayloadFromFullEdit(
     jobRoleId: data.jobRoleId?.trim() ?? "",
     shiftId: data.shiftId?.trim() ?? "",
     basicSalary: data.salary,
-    overtimeHourRate: data.overtimeRate,
-    overtimeFridayHourRate: data.overtimeFridayRate,
+    currencyId: data.currencyId.trim(),
     performanceScore: data.performanceScore,
     reliabilityScore: data.reliabilityScore,
     safetyScore: data.productionEff,
@@ -377,7 +471,9 @@ export const EMPTY_WORKFORCE_CATALOG: WorkforceCatalogJson = {
   departments: [],
   shifts: [],
   jobRoles: [],
-  statuses: []
+  statuses: [],
+  currencies: [],
+  baseCurrencyCode: "USD"
 };
 
 export type DashboardEmployeeSortKey =

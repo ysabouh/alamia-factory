@@ -16,12 +16,25 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "users.manage": "إدارة المستخدمين والصلاحيات",
   "workforce.view": "عرض القوى العاملة",
   "workforce.manage_placement": "نقل الوردية/القسم",
-  "workforce.manage_employees": "إدارة سجل الموظفين (إضافة/تعديل/حذف)"
+  "workforce.manage_employees": "إدارة سجل الموظفين (إضافة/تعديل/حذف)",
+  "workforce.manage_masters": "إدارة المرجعيات (قاعات، أقسام، ورديات)",
+  "attendance.view": "عرض الحضور والتقارير",
+  "attendance.record": "تسجيل حضور/انصراف",
+  "attendance.manage": "إدخال حضور يدوي",
+  "attendance.approve": "اعتماد سجلات الحضور",
+  "overtime.request": "طلب عمل إضافي",
+  "overtime.approve": "اعتماد/رفض الإضافي",
+  "overtime.delete": "حذف طلبات الإضافي (مدير)",
+  "payroll.view": "عرض ومعاينة الرواتب",
+  "payroll.generate": "توليد مسير الرواتب",
+  "shifts.assign": "تعيين ورديات للموظفين"
 };
 
 export const ROLE_LABELS: Record<string, string> = {
   admin: "مدير النظام (كامل الصلاحيات)",
-  supervisor: "مشرف تشغيل"
+  supervisor: "مشرف تشغيل",
+  hr_manager: "مدير موارد بشرية",
+  employee: "موظف (حضور ذاتي)"
 };
 
 export function permissionLabel(key: string): string {

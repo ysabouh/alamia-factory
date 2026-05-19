@@ -59,7 +59,6 @@ export interface WorkforceRosterEntry {
   /** Optional profile image URL from HR */
   avatarUrl?: string | null;
   basicSalary: number;
-  overtimeHourRate: number;
   annualLeaveBalance: number;
 }
 

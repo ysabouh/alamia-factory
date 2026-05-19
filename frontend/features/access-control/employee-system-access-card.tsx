@@ -3,8 +3,9 @@
 import * as React from "react";
 import { KeyRound, Link2, Shield, Unlink, UserPlus } from "lucide-react";
 
+import { WfmField, WfmInput, WfmSelect } from "@/components/workforce/atlas";
 import { Button } from "@/components/ui/button";
-import { IndustrialInput, IndustrialSelect } from "@/components/smart-factory";
+import { cn } from "@/lib/utils";
 import { useFactoryAuth } from "@/contexts/factory-auth-context";
 import { systemUserToEmployeePatch, UsersApiError, usersApi, type SystemUserJson } from "@/lib/api/users-client";
 import type { ManagedEmployee } from "@/features/workforce/employee-management/model";
@@ -12,6 +13,8 @@ import type { ManagedEmployee } from "@/features/workforce/employee-management/m
 import { permissionLabel, roleLabel } from "./permission-labels";
 
 type LinkMode = "create" | "existing";
+
+const cardInner = "rounded-sm border border-atlas-rule bg-atlas-canvas/60 p-3";
 
 export function EmployeeSystemAccessCard({
   employee,
@@ -226,56 +229,55 @@ export function EmployeeSystemAccessCard({
   };
 
   return (
-    <section className="rounded-xl border border-sf-stroke/45 bg-sf-panel/50 p-5" dir="rtl">
-      <div className="flex items-center gap-2 border-b border-sf-hairline/60 pb-3">
-        <Shield className="h-5 w-5 text-sf-accentCool" aria-hidden />
-        <MotionHeaderCopy />
+    <section className="rounded-sm border border-atlas-rule bg-atlas-paper p-5 shadow-atlasCard" dir="rtl">
+      <div className="flex items-center gap-2 border-b border-atlas-rule pb-3">
+        <Shield className="h-5 w-5 text-atlas-brand" aria-hidden />
+        <AccessCardHeader />
       </div>
 
       {info ? (
-        <p className="mt-3 rounded-lg border border-sf-accent/30 bg-sf-accent/10 px-3 py-2 text-sm text-sf-ink">{info}</p>
+        <p className="mt-3 rounded-sm border border-atlas-brand/30 bg-atlas-brand/10 px-3 py-2 text-sm text-atlas-ink">{info}</p>
       ) : null}
-      {error ? <p className="mt-3 rounded-lg border border-sf-alarm/35 bg-sf-alarm/10 px-3 py-2 text-sm text-sf-alarm">{error}</p> : null}
+      {error ? (
+        <p className="mt-3 rounded-sm border border-atlas-danger/35 bg-atlas-danger/10 px-3 py-2 text-sm text-atlas-danger">{error}</p>
+      ) : null}
 
       {!su ? (
         <div className="mt-4 space-y-4">
-          <p className="text-sm text-sf-muted">
+          <p className="text-sm text-atlas-muted">
             ربط الموظف بحساب دخول للنظام. بيانات العامل (الاسم، الراتب…) تُحفظ بزر «حفظ التعديلات» في أعلى الصفحة.
           </p>
 
           {canManageUsers ? (
             <>
-              <MotionLinkModeTabs linkMode={linkMode} setLinkMode={setLinkMode} />
+              <LinkModeTabs linkMode={linkMode} setLinkMode={setLinkMode} />
 
               {linkMode === "create" ? (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block text-xs text-sf-muted sm:col-span-2">
-                    البريد (تسجيل الدخول)
-                    <IndustrialInput className="mt-1 w-full" value={linkEmail} onChange={(e) => setLinkEmail(e.target.value)} />
-                  </label>
-                  <label className="block text-xs text-sf-muted">
-                    كلمة المرور
-                    <IndustrialInput
+                  <WfmField id="link-email" label="البريد (تسجيل الدخول)" className="sm:col-span-2">
+                    <WfmInput id="link-email" value={linkEmail} onChange={(e) => setLinkEmail(e.target.value)} />
+                  </WfmField>
+                  <WfmField id="link-password" label="كلمة المرور">
+                    <WfmInput
+                      id="link-password"
                       type="password"
-                      className="mt-1 w-full"
                       value={linkPassword}
                       onChange={(e) => setLinkPassword(e.target.value)}
                     />
-                  </label>
-                  <label className="block text-xs text-sf-muted">
-                    الدور
-                    <IndustrialSelect className="mt-1 w-full" value={linkRole} onChange={(e) => setLinkRole(e.target.value)}>
+                  </WfmField>
+                  <WfmField id="link-role" label="الدور">
+                    <WfmSelect id="link-role" value={linkRole} onChange={(e) => setLinkRole(e.target.value)}>
                       {roleOptions.map((r) => (
                         <option key={r} value={r}>
                           {roleLabel(r)}
                         </option>
                       ))}
-                    </IndustrialSelect>
-                  </label>
+                    </WfmSelect>
+                  </WfmField>
                   <Button
                     type="button"
-                    variant="sfAccent"
-                    className="rounded-xl sm:col-span-2"
+                    variant="atlasPrimary"
+                    className="rounded-sm sm:col-span-2"
                     disabled={busy}
                     onClick={() => void createAccount()}
                   >
@@ -284,7 +286,7 @@ export function EmployeeSystemAccessCard({
                   </Button>
                 </div>
               ) : (
-                <MotionExistingLinkForm
+                <ExistingLinkForm
                   unlinkedUsers={unlinkedUsers}
                   selectedUserId={selectedUserId}
                   setSelectedUserId={setSelectedUserId}
@@ -297,47 +299,47 @@ export function EmployeeSystemAccessCard({
               )}
             </>
           ) : (
-            <p className="text-xs text-sf-caution">يتطلب صلاحية users.manage</p>
+            <p className="text-xs text-atlas-warning">يتطلب صلاحية users.manage</p>
           )}
         </div>
       ) : (
         <div className="mt-4 space-y-4">
           <div className="flex flex-wrap gap-2 text-sm">
-            <span className="rounded-md border border-sf-stroke/40 bg-sf-deep px-2 py-1 font-mono text-xs">{su.email}</span>
+            <span className="rounded-sm border border-atlas-rule bg-atlas-canvas px-2 py-1 font-mono text-xs text-atlas-slate">
+              {su.email}
+            </span>
             {su.roles.map((r) => (
-              <span key={r} className="rounded-md bg-sf-accent/15 px-2 py-1 text-xs text-sf-accentCool">
+              <span key={r} className="rounded-sm bg-atlas-brand/15 px-2 py-1 text-xs text-atlas-brand">
                 {roleLabel(r)}
               </span>
             ))}
           </div>
 
           {me?.email === su.email ? (
-            <p className="rounded-lg border border-sf-accent/30 bg-sf-accent/10 px-3 py-2 text-xs">
+            <p className="rounded-sm border border-atlas-brand/30 bg-atlas-brand/10 px-3 py-2 text-xs text-atlas-ink">
               <KeyRound className="mb-1 inline h-3.5 w-3.5" /> حسابك الحالي — بعد تعديل الصلاحيات سجّل الخروج ثم الدخول مجدداً.
             </p>
           ) : null}
 
           {canManageUsers ? (
-            <div className="grid gap-3 rounded-lg border border-sf-hairline/50 bg-sf-deep/40 p-3 sm:grid-cols-2">
-              <p className="text-xs font-semibold text-sf-muted sm:col-span-2">تعديل الحساب المرتبط</p>
-              <label className="block text-xs text-sf-muted sm:col-span-2">
-                البريد
-                <IndustrialInput className="mt-1 w-full" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
-              </label>
-              <label className="block text-xs text-sf-muted sm:col-span-2">
-                كلمة مرور جديدة (اتركها فارغة إن لم تُرد التغيير)
-                <IndustrialInput
+            <div className={cn("grid gap-3 sm:grid-cols-2", cardInner)}>
+              <p className="text-xs font-semibold text-atlas-muted sm:col-span-2">تعديل الحساب المرتبط</p>
+              <WfmField id="edit-email" label="البريد" className="sm:col-span-2">
+                <WfmInput id="edit-email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+              </WfmField>
+              <WfmField id="edit-password" label="كلمة مرور جديدة (اتركها فارغة إن لم تُرد التغيير)" className="sm:col-span-2">
+                <WfmInput
+                  id="edit-password"
                   type="password"
-                  className="mt-1 w-full"
                   value={editPassword}
                   onChange={(e) => setEditPassword(e.target.value)}
                   placeholder="8 أحرف على الأقل"
                 />
-              </label>
-              <Button type="button" variant="sfAccent" size="sm" disabled={busy} onClick={() => void saveAccount()}>
+              </WfmField>
+              <Button type="button" variant="atlasPrimary" size="sm" className="rounded-sm" disabled={busy} onClick={() => void saveAccount()}>
                 حفظ بيانات الحساب
               </Button>
-              <Button type="button" variant="sfGhost" size="sm" disabled={busy} onClick={() => void unlinkAccount()}>
+              <Button type="button" variant="atlasOutline" size="sm" className="rounded-sm" disabled={busy} onClick={() => void unlinkAccount()}>
                 <Unlink className="h-3.5 w-3.5" />
                 إلغاء الربط
               </Button>
@@ -345,10 +347,14 @@ export function EmployeeSystemAccessCard({
           ) : null}
 
           <div>
-            <p className="mb-2 text-xs font-semibold text-sf-muted">الصلاحيات</p>
+            <p className="mb-2 text-xs font-semibold text-atlas-muted">الصلاحيات</p>
             <div className="flex flex-wrap gap-1.5">
               {su.permissions.map((p) => (
-                <span key={p} title={p} className="rounded border border-sf-hairline/50 bg-sf-panel2 px-2 py-0.5 text-[10px]">
+                <span
+                  key={p}
+                  title={p}
+                  className="rounded-sm border border-atlas-rule bg-atlas-canvas px-2 py-0.5 text-[10px] text-atlas-slate"
+                >
                   {permissionLabel(p)}
                 </span>
               ))}
@@ -356,8 +362,8 @@ export function EmployeeSystemAccessCard({
           </div>
 
           {canManageUsers ? (
-            <div className="space-y-2 border-t border-sf-hairline/50 pt-3">
-              <p className="text-xs text-sf-muted">الأدوار</p>
+            <div className="space-y-2 border-t border-atlas-rule pt-3">
+              <p className="text-xs text-atlas-muted">الأدوار</p>
               <div className="flex flex-wrap gap-2">
                 {roleOptions.map((r) => {
                   const on = roles.includes(r);
@@ -367,16 +373,19 @@ export function EmployeeSystemAccessCard({
                       type="button"
                       disabled={busy}
                       onClick={() => setRoles(on ? roles.filter((x) => x !== r) : [...roles, r])}
-                      className={`rounded-lg border px-3 py-1.5 text-xs ${
-                        on ? "border-sf-accent/50 bg-sf-accent/20" : "border-sf-stroke/40 text-sf-muted"
-                      }`}
+                      className={cn(
+                        "rounded-sm border px-3 py-1.5 text-xs transition-colors",
+                        on
+                          ? "border-atlas-brand/50 bg-atlas-brand/15 text-atlas-brand"
+                          : "border-atlas-rule text-atlas-muted hover:border-atlas-brand/30"
+                      )}
                     >
                       {roleLabel(r)}
                     </button>
                   );
                 })}
               </div>
-              <Button type="button" variant="sfAccent" size="sm" disabled={busy} onClick={() => void saveRoles()}>
+              <Button type="button" variant="atlasPrimary" size="sm" className="rounded-sm" disabled={busy} onClick={() => void saveRoles()}>
                 حفظ الأدوار
               </Button>
             </div>
@@ -387,16 +396,16 @@ export function EmployeeSystemAccessCard({
   );
 }
 
-function MotionHeaderCopy() {
+function AccessCardHeader() {
   return (
     <div>
-      <h3 className="text-sm font-bold text-sf-ink">حساب النظام والربط بالموظف</h3>
-      <p className="text-xs text-sf-muted">حساب دخول Laravel — منفصل عن بيانات العامل في النموذج</p>
+      <h3 className="text-sm font-bold text-atlas-ink">حساب النظام والربط بالموظف</h3>
+      <p className="text-xs text-atlas-muted">حساب دخول Laravel — منفصل عن بيانات العامل في النموذج</p>
     </div>
   );
 }
 
-function MotionLinkModeTabs({
+function LinkModeTabs({
   linkMode,
   setLinkMode
 }: {
@@ -404,21 +413,23 @@ function MotionLinkModeTabs({
   setLinkMode: (m: LinkMode) => void;
 }) {
   return (
-    <div className="flex gap-2 rounded-lg border border-sf-hairline/50 p-1">
+    <div className="flex gap-2 rounded-sm border border-atlas-rule bg-atlas-canvas/50 p-1">
       <button
         type="button"
-        className={`flex-1 rounded-md px-3 py-2 text-xs font-medium ${
-          linkMode === "create" ? "bg-sf-accent/20 text-sf-accentCool" : "text-sf-muted"
-        }`}
+        className={cn(
+          "flex-1 rounded-sm px-3 py-2 text-xs font-medium transition-colors",
+          linkMode === "create" ? "bg-atlas-brand/15 text-atlas-brand" : "text-atlas-muted hover:text-atlas-slate"
+        )}
         onClick={() => setLinkMode("create")}
       >
         <UserPlus className="mb-0.5 inline h-3.5 w-3.5" /> حساب جديد
       </button>
       <button
         type="button"
-        className={`flex-1 rounded-md px-3 py-2 text-xs font-medium ${
-          linkMode === "existing" ? "bg-sf-accent/20 text-sf-accentCool" : "text-sf-muted"
-        }`}
+        className={cn(
+          "flex-1 rounded-sm px-3 py-2 text-xs font-medium transition-colors",
+          linkMode === "existing" ? "bg-atlas-brand/15 text-atlas-brand" : "text-atlas-muted hover:text-atlas-slate"
+        )}
         onClick={() => setLinkMode("existing")}
       >
         <Link2 className="mb-0.5 inline h-3.5 w-3.5" /> ربط حساب موجود
@@ -427,7 +438,7 @@ function MotionLinkModeTabs({
   );
 }
 
-function MotionExistingLinkForm(props: {
+function ExistingLinkForm(props: {
   unlinkedUsers: SystemUserJson[];
   selectedUserId: string;
   setSelectedUserId: (v: string) => void;
@@ -450,36 +461,34 @@ function MotionExistingLinkForm(props: {
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <label className="block text-xs text-sf-muted sm:col-span-2">
-        مستخدم بدون موظف مرتبط
-        <IndustrialSelect className="mt-1 w-full" value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)}>
+      <WfmField id="existing-user" label="مستخدم بدون موظف مرتبط" className="sm:col-span-2">
+        <WfmSelect id="existing-user" value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)}>
           <option value="">— اختر مستخدماً —</option>
           {unlinkedUsers.map((u) => (
             <option key={u.id} value={String(u.id)}>
               {u.name} ({u.email})
             </option>
           ))}
-        </IndustrialSelect>
-      </label>
+        </WfmSelect>
+      </WfmField>
       {unlinkedUsers.length === 0 ? (
-        <p className="text-xs text-sf-caution sm:col-span-2">
+        <p className="text-xs text-atlas-warning sm:col-span-2">
           لا يوجد مستخدمون غير مرتبطين. أنشئ حساباً جديداً أو ألغِ ربط مستخدم من موظف آخر.
         </p>
       ) : null}
-      <label className="block text-xs text-sf-muted sm:col-span-2">
-        الدور بعد الربط
-        <IndustrialSelect className="mt-1 w-full" value={linkRole} onChange={(e) => setLinkRole(e.target.value)}>
+      <WfmField id="existing-role" label="الدور بعد الربط" className="sm:col-span-2">
+        <WfmSelect id="existing-role" value={linkRole} onChange={(e) => setLinkRole(e.target.value)}>
           {roleOptions.map((r) => (
             <option key={r} value={r}>
               {roleLabel(r)}
             </option>
           ))}
-        </IndustrialSelect>
-      </label>
+        </WfmSelect>
+      </WfmField>
       <Button
         type="button"
-        variant="sfAccent"
-        className="rounded-xl sm:col-span-2"
+        variant="atlasPrimary"
+        className="rounded-sm sm:col-span-2"
         disabled={busy || !selectedUserId}
         onClick={onLink}
       >

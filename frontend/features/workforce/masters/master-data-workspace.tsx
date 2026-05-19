@@ -4,12 +4,25 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { ChevronLeft, ChevronRight, Pencil, Plus, Power, PowerOff, Search } from "lucide-react";
+import {
+  Building2,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Coins,
+  Layers,
+  Pencil,
+  Plus,
+  Power,
+  PowerOff,
+  Search,
+  Users
+} from "lucide-react";
 
 import {
   WfmInput,
   WfmModal,
-  WfmPageHeader,
+  WfmRegistryHeader,
   WfmSelect,
   WfmTable,
   WfmTableBody,
@@ -48,9 +61,17 @@ import {
   shiftFormToPayload,
   type ShiftFormValues
 } from "@/features/workforce/masters/forms/shift-form";
+import {
+  CurrencyForm,
+  currencyFormFromRow,
+  currencyFormToPayload,
+  emptyCurrencyForm,
+  type CurrencyFormValues
+} from "@/features/workforce/masters/forms/currency-form";
 import { hallTypeLabel } from "@/features/workforce/masters/hall-types";
 import { MasterStatusBadge } from "@/features/workforce/masters/master-status-badge";
 import {
+  type CurrencyMaster,
   type DepartmentMaster,
   type HallMaster,
   type JobRoleMaster,
@@ -76,6 +97,7 @@ type EntityConfig<T, F> = {
   title: string;
   subtitle: string;
   monoTag: string;
+  titleIcon: ReactNode;
   columns: MasterColumn<T>[];
   emptyForm: () => F;
   formFromRow: (row: T) => F;
@@ -85,6 +107,7 @@ type EntityConfig<T, F> = {
     onChange: (v: F) => void;
     disabled?: boolean;
     halls: HallMaster[];
+    editingRow: T | null;
   }) => ReactNode;
   needsHalls?: boolean;
 };
@@ -214,35 +237,36 @@ function MasterDataWorkspace<T extends { id: string; isActive: boolean }, F>({
 
   return (
     <div className="space-y-6">
-      <header className="relative overflow-hidden rounded-sm border border-atlas-rule bg-atlas-paper shadow-atlasCard p-0">
-        <div className="pointer-events-none absolute -start-20 top-0 h-40 w-40 rounded-full bg-sf-accent/10 blur-3xl" aria-hidden />
-        <div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-atlas-muted">{config.monoTag}</p>
-            <h1 className="mt-2 text-2xl font-bold text-atlas-ink md:text-3xl">{config.title}</h1>
-            <p className="mt-2 max-w-2xl text-sm text-atlas-muted">{config.subtitle}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href={"/ar/workforce/masters" as Route}
-              className="inline-flex items-center rounded-sm border border-atlas-rule bg-atlas-canvas px-3 py-2 text-sm font-medium text-atlas-brand transition hover:bg-atlas-brandSoft"
-            >
-              المرجعيات
-            </Link>
+      <WfmRegistryHeader
+        kicker={config.monoTag}
+        title={config.title}
+        titleIcon={config.titleIcon}
+        description={config.subtitle}
+        actions={
+          <>
+            <Button type="button" variant="atlasOutline" className="rounded-sm" asChild>
+              <Link href={"/ar/workforce/masters" as Route}>المرجعيات</Link>
+            </Button>
             {canManage ? (
-              <Button type="button" variant="atlasPrimary" className="gap-2" onClick={() => void openCreate()}>
-                <Plus className="h-4 w-4" />
+              <Button type="button" variant="atlasPrimary" className="rounded-sm gap-2" onClick={() => void openCreate()}>
+                <Plus className="h-4 w-4" aria-hidden />
                 إضافة
               </Button>
             ) : (
-              <Button type="button" variant="atlasOutline" className="opacity-60" disabled title="تتطلب صلاحية workforce.manage_masters">
-                <Plus className="h-4 w-4" />
+              <Button
+                type="button"
+                variant="atlasOutline"
+                className="rounded-sm opacity-60"
+                disabled
+                title="تتطلب صلاحية workforce.manage_masters"
+              >
+                <Plus className="h-4 w-4" aria-hidden />
                 إضافة
               </Button>
             )}
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {error ? (
         <div className="rounded-lg border border-atlas-danger/35 bg-atlas-danger/10 px-4 py-3 text-sm text-atlas-danger">{error}</div>
@@ -418,21 +442,12 @@ function MasterDataWorkspace<T extends { id: string; isActive: boolean }, F>({
           values: formValues,
           onChange: setFormValues,
           disabled: saveBusy,
-          halls
+          halls,
+          editingRow: editingId ? (rows.find((r) => r.id === editingId) ?? null) : null
         })}
       </WfmModal>
     </div>
   );
-}
-
-function motionHeaderAccent() {
-  return (
-    <div className="pointer-events-none absolute -start-20 top-0 h-40 w-40 rounded-full bg-sf-accent/10 blur-3xl" aria-hidden />
-  );
-}
-
-function motionActionButtons({ children }: { children: ReactNode }) {
-  return <div className="flex flex-wrap gap-1">{children}</div>;
 }
 
 const hallsConfig: EntityConfig<HallMaster, HallFormValues> = {
@@ -440,12 +455,13 @@ const hallsConfig: EntityConfig<HallMaster, HallFormValues> = {
   title: "قاعات الإنتاج",
   subtitle: "إدارة قاعات المصنع — التعطيل يخفي السجل من نماذج الموظفين دون حذفه.",
   monoTag: "WFM · MASTERS · HALLS",
+  titleIcon: <Building2 className="h-8 w-8 text-atlas-brand" aria-hidden />,
   emptyForm: emptyHallForm,
   formFromRow: hallFormFromRow,
   formToPayload: hallFormToPayload,
   renderForm: ({ values, onChange, disabled }) => (
     <HallForm values={values} onChange={onChange} disabled={disabled} />
-  ),
+  ), // editingRow unused
   columns: [
     { header: "الرمز", className: "font-mono text-atlas-brand", cell: (r) => r.code },
     { header: "الاسم", cell: (r) => r.name },
@@ -458,6 +474,7 @@ const departmentsConfig: EntityConfig<DepartmentMaster, DepartmentFormValues> = 
   title: "الأقسام",
   subtitle: "ربط كل قسم بقاعة إنتاج — مطلوب لنماذج الموظفين.",
   monoTag: "WFM · MASTERS · DEPTS",
+  titleIcon: <Layers className="h-8 w-8 text-atlas-brand" aria-hidden />,
   needsHalls: true,
   emptyForm: emptyDepartmentForm,
   formFromRow: departmentFormFromRow,
@@ -477,6 +494,7 @@ const jobRolesConfig: EntityConfig<JobRoleMaster, JobRoleFormValues> = {
   title: "الأدوار الوظيفية",
   subtitle: "مستوى الدور من 1 (أدنى) إلى 10 (أعلى).",
   monoTag: "WFM · MASTERS · ROLES",
+  titleIcon: <Users className="h-8 w-8 text-atlas-brand" aria-hidden />,
   emptyForm: emptyJobRoleForm,
   formFromRow: jobRoleFormFromRow,
   formToPayload: jobRoleFormToPayload,
@@ -490,11 +508,41 @@ const jobRolesConfig: EntityConfig<JobRoleMaster, JobRoleFormValues> = {
   ]
 };
 
+const currenciesConfig: EntityConfig<CurrencyMaster, CurrencyFormValues> = {
+  resource: "currencies",
+  title: "العملات",
+  subtitle: "الدولار الأمريكي (USD) عملة مرجعية — المعادل = عدد وحدات العملة مقابل 1 دولار.",
+  monoTag: "WFM · MASTERS · FX",
+  titleIcon: <Coins className="h-8 w-8 text-atlas-brand" aria-hidden />,
+  emptyForm: emptyCurrencyForm,
+  formFromRow: currencyFormFromRow,
+  formToPayload: currencyFormToPayload,
+  renderForm: ({ values, onChange, disabled, editingRow }) => (
+    <CurrencyForm
+      values={values}
+      onChange={onChange}
+      disabled={disabled}
+      isBase={(editingRow as CurrencyMaster | null)?.isBase}
+    />
+  ),
+  columns: [
+    { header: "الرمز", className: "font-mono text-atlas-brand", cell: (r) => r.code },
+    { header: "الاسم", cell: (r) => r.name },
+    { header: "الاختصار", cell: (r) => r.symbol },
+    {
+      header: "معادل USD",
+      className: "font-mono text-sm",
+      cell: (r) => (r.isBase ? "1 (أساس)" : r.usdExchangeRate.toLocaleString("ar"))
+    }
+  ]
+};
+
 const shiftsConfig: EntityConfig<ShiftMaster, ShiftFormValues> = {
   resource: "shifts",
   title: "الورديات",
   subtitle: "أوقات البداية والنهاية بصيغة 24 ساعة.",
   monoTag: "WFM · MASTERS · SHIFTS",
+  titleIcon: <Clock className="h-8 w-8 text-atlas-brand" aria-hidden />,
   emptyForm: emptyShiftForm,
   formFromRow: shiftFormFromRow,
   formToPayload: shiftFormToPayload,
@@ -526,4 +574,8 @@ export function JobRolesMasterWorkspace() {
 
 export function ShiftsMasterWorkspace() {
   return <MasterDataWorkspace config={shiftsConfig} />;
+}
+
+export function CurrenciesMasterWorkspace() {
+  return <MasterDataWorkspace config={currenciesConfig} />;
 }

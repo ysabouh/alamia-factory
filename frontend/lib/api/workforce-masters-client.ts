@@ -4,7 +4,7 @@ import { WorkforceApiError } from "@/lib/api/workforce-client";
 export { WorkforceApiError };
 import { authFetchHeaders } from "@/lib/auth/factory-auth-api";
 
-export type MasterResource = "halls" | "departments" | "job-roles" | "shifts";
+export type MasterResource = "halls" | "departments" | "job-roles" | "shifts" | "currencies";
 
 export type MasterListMeta = {
   page: number;
@@ -52,7 +52,17 @@ export type ShiftMaster = {
   isActive: boolean;
 };
 
-export type MasterRow = HallMaster | DepartmentMaster | JobRoleMaster | ShiftMaster;
+export type CurrencyMaster = {
+  id: string;
+  code: string;
+  name: string;
+  symbol: string;
+  usdExchangeRate: number;
+  isBase: boolean;
+  isActive: boolean;
+};
+
+export type MasterRow = HallMaster | DepartmentMaster | JobRoleMaster | ShiftMaster | CurrencyMaster;
 
 type ListParams = {
   page?: number;

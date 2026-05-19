@@ -9,7 +9,12 @@ use App\Interfaces\Http\Controllers\Api\V1\UsersController;
 use App\Interfaces\Http\Controllers\Api\V1\Masters\DepartmentsMasterController;
 use App\Interfaces\Http\Controllers\Api\V1\Masters\HallsMasterController;
 use App\Interfaces\Http\Controllers\Api\V1\Masters\JobRolesMasterController;
+use App\Interfaces\Http\Controllers\Api\V1\Masters\CurrenciesMasterController;
 use App\Interfaces\Http\Controllers\Api\V1\Masters\ShiftsMasterController;
+use App\Interfaces\Http\Controllers\Api\V1\Attendance\AttendanceController;
+use App\Interfaces\Http\Controllers\Api\V1\Attendance\EmployeeShiftsController;
+use App\Interfaces\Http\Controllers\Api\V1\Attendance\OvertimeRequestsController;
+use App\Interfaces\Http\Controllers\Api\V1\Attendance\PayrollsController;
 use App\Interfaces\Http\Controllers\Api\V1\WorkforceController;
 use App\Interfaces\Http\Controllers\Api\V1\WorkforceEmployeesController;
 use Illuminate\Support\Facades\Route;
@@ -79,6 +84,13 @@ Route::middleware('auth:sanctum')->group(function () use ($publicWorkforceRead):
         Route::patch('shifts/{shift}', [ShiftsMasterController::class, 'update'])->middleware($write);
         Route::patch('shifts/{shift}/activate', [ShiftsMasterController::class, 'activate'])->middleware($write);
         Route::patch('shifts/{shift}/deactivate', [ShiftsMasterController::class, 'deactivate'])->middleware($write);
+
+        Route::get('currencies', [CurrenciesMasterController::class, 'index'])->middleware($read);
+        Route::get('currencies/{currency}', [CurrenciesMasterController::class, 'show'])->middleware($read);
+        Route::post('currencies', [CurrenciesMasterController::class, 'store'])->middleware($write);
+        Route::patch('currencies/{currency}', [CurrenciesMasterController::class, 'update'])->middleware($write);
+        Route::patch('currencies/{currency}/activate', [CurrenciesMasterController::class, 'activate'])->middleware($write);
+        Route::patch('currencies/{currency}/deactivate', [CurrenciesMasterController::class, 'deactivate'])->middleware($write);
     });
 
     if (! $publicWorkforceRead) {
@@ -88,6 +100,41 @@ Route::middleware('auth:sanctum')->group(function () use ($publicWorkforceRead):
     Route::post('workforce/employees', [WorkforceEmployeesController::class, 'store'])->middleware('can:workforce.manage_employees');
     Route::patch('workforce/employees/{employee}', [WorkforceEmployeesController::class, 'update'])->middleware('can:workforce.manage_employees');
     Route::delete('workforce/employees/{employee}', [WorkforceEmployeesController::class, 'destroy'])->middleware('can:workforce.manage_employees');
+
+    Route::prefix('workforce/attendance')->group(function (): void {
+        Route::get('dashboard', [AttendanceController::class, 'dashboard'])->middleware('can:attendance.view');
+        Route::get('daily', [AttendanceController::class, 'daily'])->middleware('can:attendance.view');
+        Route::get('records', [AttendanceController::class, 'index'])->middleware('can:attendance.view');
+        Route::post('records', [AttendanceController::class, 'store'])->middleware('can:attendance.record');
+        Route::post('records/{record}/approve', [AttendanceController::class, 'approve'])->middleware('can:attendance.approve');
+        Route::post('check-in', [AttendanceController::class, 'checkIn'])->middleware('can:attendance.record');
+        Route::post('check-out', [AttendanceController::class, 'checkOut'])->middleware('can:attendance.record');
+        Route::get('employees/{employee}/history', [AttendanceController::class, 'employeeHistory'])->middleware('can:attendance.view');
+        Route::get('employees/{employee}/report', [AttendanceController::class, 'employeeReport'])->middleware('can:attendance.view');
+    });
+
+    Route::prefix('workforce/overtime')->group(function (): void {
+        Route::get('requests', [OvertimeRequestsController::class, 'index'])->middleware('can:attendance.view');
+        Route::post('requests', [OvertimeRequestsController::class, 'store'])->middleware('can:overtime.request');
+        Route::patch('requests/{overtimeRequest}', [OvertimeRequestsController::class, 'update']);
+        Route::post('requests/{overtimeRequest}/approve', [OvertimeRequestsController::class, 'approve'])->middleware('can:overtime.approve');
+        Route::post('requests/{overtimeRequest}/reject', [OvertimeRequestsController::class, 'reject'])->middleware('can:overtime.approve');
+        Route::post('requests/{overtimeRequest}/complete', [OvertimeRequestsController::class, 'complete'])->middleware('can:overtime.approve');
+        Route::delete('requests/{overtimeRequest}', [OvertimeRequestsController::class, 'destroy'])->middleware('can:overtime.delete');
+    });
+
+    Route::prefix('workforce/payrolls')->group(function (): void {
+        Route::get('/', [PayrollsController::class, 'index'])->middleware('can:payroll.view');
+        Route::post('preview', [PayrollsController::class, 'preview'])->middleware('can:payroll.view');
+        Route::post('generate', [PayrollsController::class, 'generate'])->middleware('can:payroll.generate');
+        Route::get('{payroll}', [PayrollsController::class, 'show'])->middleware('can:payroll.view');
+        Route::get('{payroll}/export', [PayrollsController::class, 'export'])->middleware('can:payroll.view');
+    });
+
+    Route::prefix('workforce/employee-shifts')->group(function (): void {
+        Route::get('/', [EmployeeShiftsController::class, 'index'])->middleware('can:attendance.view');
+        Route::post('/', [EmployeeShiftsController::class, 'store'])->middleware('can:shifts.assign');
+    });
 
     Route::get('machines', [MachineController::class, 'index'])->middleware('can:machines.view');
     Route::patch('machines/{machine}/status', [MachineController::class, 'updateStatus']);

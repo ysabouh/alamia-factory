@@ -40,6 +40,16 @@ class EnsureSuperAdminCommand extends Command
             'workforce.manage_placement',
             'workforce.manage_employees',
             'workforce.manage_masters',
+            'attendance.view',
+            'attendance.record',
+            'attendance.manage',
+            'attendance.approve',
+            'overtime.request',
+            'overtime.approve',
+            'overtime.delete',
+            'payroll.view',
+            'payroll.generate',
+            'shifts.assign',
         ];
 
         $guard = 'web';

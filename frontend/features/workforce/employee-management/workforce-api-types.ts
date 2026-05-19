@@ -15,6 +15,15 @@ export type WorkforceJobRoleJson = WorkforceRefJson & { roleLevel: number };
 
 export type WorkforceShiftJson = WorkforceRefJson & { startTime: string; endTime: string };
 
+export type WorkforceCurrencyJson = {
+  id: string;
+  code: string;
+  name: string;
+  symbol: string;
+  usdExchangeRate: number;
+  isBase: boolean;
+};
+
 /** Employee row من واجهة Laravel (معرّفات كنصوص للتوافق مع الواجهة). */
 export type ApiEmployeeDetailJson = {
   id: string;
@@ -36,8 +45,9 @@ export type ApiEmployeeDetailJson = {
   shiftId: string | null;
   employeeStatusId: string | null;
   basicSalary: number;
-  overtimeHourRate: number;
-  overtimeFridayHourRate: number;
+  currencyId: string | null;
+  currency: WorkforceCurrencyJson | null;
+  basicSalaryUsd: number;
   performanceScore: number;
   reliabilityScore: number;
   safetyScore: number;
@@ -68,4 +78,6 @@ export type WorkforceCatalogJson = {
   shifts: WorkforceShiftJson[];
   jobRoles: WorkforceJobRoleJson[];
   statuses: WorkforceRefJson[];
+  currencies: WorkforceCurrencyJson[];
+  baseCurrencyCode: string;
 };

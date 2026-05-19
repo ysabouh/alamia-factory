@@ -15,6 +15,7 @@ import {
   Wallet
 } from "lucide-react";
 
+import { WfmModal, WfmSelect } from "@/components/workforce/atlas";
 import { IndustrialSelect, SfModal } from "@/components/smart-factory";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -116,31 +117,37 @@ export function EmployeeQuickActions({
   const btnClass =
     variant === "row"
       ? "h-8 rounded-md border border-sf-stroke/40 bg-sf-panel px-2 text-[11px] text-sf-copy hover:border-sf-accentCool/45"
-      : "h-9 rounded-lg border border-sf-stroke/45 bg-sf-deep px-3 text-xs text-sf-copy hover:border-sf-accent/40";
+      : "h-9 rounded-sm gap-1.5 px-3 text-xs";
+  const btnVariant = variant === "detail" ? "atlasOutline" : "sfGhost";
+  const Modal = variant === "detail" ? WfmModal : SfModal;
+  const Select = variant === "detail" ? WfmSelect : IndustrialSelect;
+  const cancelVariant = variant === "detail" ? "atlasOutline" : "sfGhost";
+  const confirmVariant = variant === "detail" ? "atlasPrimary" : "sfAccent";
+  const dangerVariant = variant === "detail" ? "atlasOutline" : "sfDanger";
 
   return (
     <div className={cn("flex flex-wrap gap-2", className)}>
-      <Button type="button" variant="sfGhost" className={btnClass} disabled={busy || apiLocked} onClick={() => setShiftOpen(true)}>
+      <Button type="button" variant={btnVariant} className={btnClass} disabled={busy || apiLocked} onClick={() => setShiftOpen(true)}>
         <Shuffle className="h-3.5 w-3.5" />
         وردية
       </Button>
-      <Button type="button" variant="sfGhost" className={btnClass} disabled={busy || apiLocked} onClick={() => setDeptOpen(true)}>
+      <Button type="button" variant={btnVariant} className={btnClass} disabled={busy || apiLocked} onClick={() => setDeptOpen(true)}>
         <Building2 className="h-3.5 w-3.5" />
         قسم
       </Button>
-      <Button type="button" variant="sfGhost" className={btnClass} disabled={busy} onClick={() => setRewardOpen(true)}>
+      <Button type="button" variant={btnVariant} className={btnClass} disabled={busy} onClick={() => setRewardOpen(true)}>
         <Coins className="h-3.5 w-3.5" />
         مكافأة
       </Button>
-      <Button type="button" variant="sfGhost" className={btnClass} disabled={busy} onClick={() => setPenaltyOpen(true)}>
+      <Button type="button" variant={btnVariant} className={btnClass} disabled={busy} onClick={() => setPenaltyOpen(true)}>
         <ShieldAlert className="h-3.5 w-3.5" />
         جزاء
       </Button>
-      <Button type="button" variant="sfGhost" className={btnClass} disabled={busy || apiLocked} onClick={approveLeave}>
+      <Button type="button" variant={btnVariant} className={btnClass} disabled={busy || apiLocked} onClick={approveLeave}>
         <CalendarCheck className="h-3.5 w-3.5" />
         إجازة
       </Button>
-      <Button type="button" variant="sfGhost" className={btnClass} disabled={busy || apiLocked} onClick={() => setSuspendOpen(true)}>
+      <Button type="button" variant={btnVariant} className={btnClass} disabled={busy || apiLocked} onClick={() => setSuspendOpen(true)}>
         <Ban className="h-3.5 w-3.5" />
         تعليق
       </Button>
@@ -157,7 +164,7 @@ export function EmployeeQuickActions({
         رواتب
       </Link>
       {variant === "detail" ? (
-        <span className="inline-flex items-center gap-1 text-[10px] text-sf-muted">
+        <span className="inline-flex items-center gap-1 text-[10px] text-atlas-muted">
           <MoreHorizontal className="h-3 w-3" aria-hidden />
           {apiLocked
             ? "عرض احتياطي — أوامر الـ API معطّلة"
@@ -165,113 +172,117 @@ export function EmployeeQuickActions({
         </span>
       ) : null}
 
-      <SfModal
+      <Modal
         open={shiftOpen}
         onOpenChange={setShiftOpen}
         title="تغيير الوردية"
         description={employee.fullName}
         footer={
           <>
-            <Button variant="sfGhost" type="button" onClick={() => setShiftOpen(false)}>
+            <Button variant={cancelVariant} type="button" className="rounded-sm" onClick={() => setShiftOpen(false)}>
               إلغاء
             </Button>
-            <Button variant="sfAccent" type="button" disabled={busy} onClick={applyShift}>
+            <Button variant={confirmVariant} type="button" className="rounded-sm" disabled={busy} onClick={applyShift}>
               تأكيد
             </Button>
           </>
         }
       >
-        <IndustrialSelect value={nextShiftId} onChange={(e) => setNextShiftId(e.target.value)} className="w-full">
+        <Select value={nextShiftId} onChange={(e) => setNextShiftId(e.target.value)} className="w-full">
           {(catalog?.shifts ?? []).map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
             </option>
           ))}
-        </IndustrialSelect>
-      </SfModal>
+        </Select>
+      </Modal>
 
-      <SfModal
+      <Modal
         open={deptOpen}
         onOpenChange={setDeptOpen}
         title="نقل القسم"
         description={employee.fullName}
         footer={
           <>
-            <Button variant="sfGhost" type="button" onClick={() => setDeptOpen(false)}>
+            <Button variant={cancelVariant} type="button" className="rounded-sm" onClick={() => setDeptOpen(false)}>
               إلغاء
             </Button>
-            <Button variant="sfAccent" type="button" disabled={busy} onClick={applyDept}>
+            <Button variant={confirmVariant} type="button" className="rounded-sm" disabled={busy} onClick={applyDept}>
               تأكيد
             </Button>
           </>
         }
       >
-        <IndustrialSelect value={nextDeptId} onChange={(e) => setNextDeptId(e.target.value)} className="w-full">
+        <Select value={nextDeptId} onChange={(e) => setNextDeptId(e.target.value)} className="w-full">
           {(catalog?.departments ?? []).map((d) => (
             <option key={d.id} value={d.id}>
               {d.name}
             </option>
           ))}
-        </IndustrialSelect>
-      </SfModal>
+        </Select>
+      </Modal>
 
-      <SfModal
+      <Modal
         open={rewardOpen}
         onOpenChange={setRewardOpen}
         title="إضافة مكافأة"
         description="غير مرتبط بجدول في قاعدة البيانات حالياً"
         footer={
           <>
-            <Button variant="sfGhost" type="button" onClick={() => setRewardOpen(false)}>
+            <Button variant={cancelVariant} type="button" className="rounded-sm" onClick={() => setRewardOpen(false)}>
               إلغاء
             </Button>
-            <Button variant="sfAccent" type="button" onClick={() => setRewardOpen(false)}>
+            <Button variant={confirmVariant} type="button" className="rounded-sm" onClick={() => setRewardOpen(false)}>
               حسناً
             </Button>
           </>
         }
       >
-        <p className="text-sm text-sf-muted">
+        <p className={cn("text-sm", variant === "detail" ? "text-atlas-muted" : "text-sf-muted")}>
           تسجيل المكافآت يتطلب جداول رواتب/حوافز في الـ API. يمكنك تعديل الراتب أو الملاحظات من نموذج التعديل.
         </p>
-      </SfModal>
+      </Modal>
 
-      <SfModal
+      <Modal
         open={penaltyOpen}
         onOpenChange={setPenaltyOpen}
         title="إضافة جزاء"
         footer={
           <>
-            <Button variant="sfGhost" type="button" onClick={() => setPenaltyOpen(false)}>
+            <Button variant={cancelVariant} type="button" className="rounded-sm" onClick={() => setPenaltyOpen(false)}>
               إلغاء
             </Button>
-            <Button variant="sfDanger" type="button" onClick={() => setPenaltyOpen(false)}>
+            <Button variant={dangerVariant} type="button" className="rounded-sm" onClick={() => setPenaltyOpen(false)}>
               حسناً
             </Button>
           </>
         }
       >
-        <p className="text-sm text-sf-muted">الجزاءات غير مربوطة بتخزين دائم بعد — استخدم الملاحظات أو تكامل الرواتب لاحقاً.</p>
-      </SfModal>
+        <p className={cn("text-sm", variant === "detail" ? "text-atlas-muted" : "text-sf-muted")}>
+          الجزاءات غير مربوطة بتخزين دائم بعد — استخدم الملاحظات أو تكامل الرواتب لاحقاً.
+        </p>
+      </Modal>
 
-      <SfModal
+      <Modal
         open={suspendOpen}
         onOpenChange={setSuspendOpen}
         title="تعليق الموظف"
         description="تعيين حالة التوظيف إلى موقوف مؤقتًا (SUSPENDED)"
         footer={
           <>
-            <Button variant="sfGhost" type="button" onClick={() => setSuspendOpen(false)}>
+            <Button variant={cancelVariant} type="button" className="rounded-sm" onClick={() => setSuspendOpen(false)}>
               إلغاء
             </Button>
-            <Button variant="sfDanger" type="button" disabled={busy} onClick={suspend}>
+            <Button variant={dangerVariant} type="button" className="rounded-sm" disabled={busy} onClick={suspend}>
               تعليق
             </Button>
           </>
         }
       >
-        <p className="text-sm text-sf-muted">يُحدّث السجل في قاعدة البيانات عبر PATCH.</p>
-      </SfModal>
+        <p className={cn("text-sm", variant === "detail" ? "text-atlas-muted" : "text-sf-muted")}>
+          يُحدّث السجل في قاعدة البيانات عبر PATCH.
+        </p>
+      </Modal>
     </div>
   );
 }

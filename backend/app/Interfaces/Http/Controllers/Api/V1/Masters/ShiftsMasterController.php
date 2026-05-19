@@ -91,6 +91,12 @@ class ShiftsMasterController
             'endTime' => ['required', 'date_format:H:i'],
             'end_time' => ['sometimes', 'date_format:H:i'],
             'description' => ['nullable', 'string', 'max:5000'],
+            'breakMinutes' => ['sometimes', 'integer', 'min:0', 'max:600'],
+            'break_minutes' => ['sometimes', 'integer', 'min:0', 'max:600'],
+            'overtimeMultiplier' => ['sometimes', 'numeric', 'min:1', 'max:5'],
+            'overtime_multiplier' => ['sometimes', 'numeric', 'min:1', 'max:5'],
+            'fridayMultiplier' => ['sometimes', 'numeric', 'min:1', 'max:5'],
+            'friday_multiplier' => ['sometimes', 'numeric', 'min:1', 'max:5'],
             'isActive' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
@@ -104,6 +110,9 @@ class ShiftsMasterController
             'starts_at' => Carbon::createFromFormat('H:i', $start)->format('H:i:s'),
             'ends_at' => Carbon::createFromFormat('H:i', $end)->format('H:i:s'),
             'description' => $data['description'] ?? null,
+            'break_minutes' => (int) ($data['breakMinutes'] ?? $data['break_minutes'] ?? 0),
+            'overtime_multiplier' => (float) ($data['overtimeMultiplier'] ?? $data['overtime_multiplier'] ?? 1.5),
+            'friday_multiplier' => (float) ($data['fridayMultiplier'] ?? $data['friday_multiplier'] ?? 2.0),
             'is_active' => array_key_exists('isActive', $data) || array_key_exists('is_active', $data)
                 ? $request->boolean('isActive', $request->boolean('is_active'))
                 : true,
@@ -122,6 +131,9 @@ class ShiftsMasterController
             'startTime' => $shift->starts_at ? Carbon::parse($shift->starts_at)->format('H:i') : '',
             'endTime' => $shift->ends_at ? Carbon::parse($shift->ends_at)->format('H:i') : '',
             'description' => $shift->description,
+            'breakMinutes' => (int) ($shift->break_minutes ?? 0),
+            'overtimeMultiplier' => (float) ($shift->overtime_multiplier ?? 1.5),
+            'fridayMultiplier' => (float) ($shift->friday_multiplier ?? 2.0),
             'isActive' => (bool) $shift->is_active,
             'createdAt' => $shift->created_at?->toIso8601String(),
             'updatedAt' => $shift->updated_at?->toIso8601String(),

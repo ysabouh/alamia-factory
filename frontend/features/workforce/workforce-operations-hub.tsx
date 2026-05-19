@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { Route } from "next";
-import { Activity, ArrowUpRight, Users, Wallet } from "lucide-react";
+import { Activity, ArrowUpRight, BookMarked, CalendarCheck, Shield, Users, Wallet } from "lucide-react";
 
 import { WfmPageHeader } from "@/components/workforce/atlas";
 
@@ -12,6 +12,12 @@ const TILES: { href: Route; title: string; desc: string; icon: typeof Users }[] 
     title: "إدارة الموظفين",
     desc: "سجل كامل — بحث، فرز، إجراءات جماعية، تفاصيل منزلقة.",
     icon: Users
+  },
+  {
+    href: "/ar/workforce/attendance",
+    title: "الحضور والرواتب",
+    desc: "حضور يومي، إضافي، وحساب راتب من لقطات مخزنة.",
+    icon: CalendarCheck
   },
   {
     href: "/ar/workforce/crew",
@@ -24,6 +30,18 @@ const TILES: { href: Route; title: string; desc: string; icon: typeof Users }[] 
     title: "القوى المالية",
     desc: "مركز التكاليف والرواتب والمؤشرات المالية.",
     icon: Wallet
+  },
+  {
+    href: "/ar/workforce/masters",
+    title: "المرجعيات",
+    desc: "قاعات، أقسام، أدوار، ورديات، عملات — جداول الإعداد الأساسية.",
+    icon: BookMarked
+  },
+  {
+    href: "/ar/workforce/access",
+    title: "الصلاحيات",
+    desc: "ربط المستخدمين بالموظفين وإدارة الأدوار والصلاحيات.",
+    icon: Shield
   }
 ];
 
@@ -33,10 +51,10 @@ export function WorkforceOperationsHub() {
       <WfmPageHeader
         kicker="مركز العمليات · Workforce"
         title="القوى العاملة"
-        description="واجهة موحّدة لإدارة السجل والطاقم والماليات — بنمط Atlas (ورق دافئ وكهرماني)."
+        description="واجهة موحّدة للسجل والحضور والمرجعيات والصلاحيات والماليات."
         icon={<Users className="h-3.5 w-3.5 text-atlas-brand" aria-hidden />}
       />
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {TILES.map((t) => {
           const Icon = t.icon;
           return (

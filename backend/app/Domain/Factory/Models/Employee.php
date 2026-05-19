@@ -34,8 +34,7 @@ class Employee extends Model
         'shift_id',
         'employment_status_id',
         'basic_salary',
-        'overtime_hour_rate',
-        'overtime_friday_hour_rate',
+        'currency_id',
         'performance_score',
         'reliability_score',
         'safety_score',
@@ -52,8 +51,6 @@ class Employee extends Model
             'birth_date' => 'date',
             'hire_date' => 'date',
             'basic_salary' => 'decimal:2',
-            'overtime_hour_rate' => 'decimal:2',
-            'overtime_friday_hour_rate' => 'decimal:2',
             'performance_score' => 'decimal:2',
             'reliability_score' => 'decimal:2',
             'safety_score' => 'decimal:2',
@@ -69,6 +66,11 @@ class Employee extends Model
         $assembled = trim((string) $this->first_name.' '.$this->last_name);
 
         return $assembled !== '' ? $assembled : (string) $this->name;
+    }
+
+    public function currency(): BelongsTo
+    {
+        return $this->belongsTo(Currency::class);
     }
 
     public function hall(): BelongsTo
@@ -109,5 +111,25 @@ class Employee extends Model
     public function technicianAssignments(): HasMany
     {
         return $this->hasMany(MachineAssignment::class, 'technician_id');
+    }
+
+    public function attendanceRecords(): HasMany
+    {
+        return $this->hasMany(AttendanceRecord::class);
+    }
+
+    public function employeeShifts(): HasMany
+    {
+        return $this->hasMany(EmployeeShift::class);
+    }
+
+    public function overtimeRequests(): HasMany
+    {
+        return $this->hasMany(OvertimeRequest::class);
+    }
+
+    public function payrollItems(): HasMany
+    {
+        return $this->hasMany(PayrollItem::class);
     }
 }

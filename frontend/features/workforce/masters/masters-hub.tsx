@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import type { Route } from "next";
-import { Building2, Clock, Layers, Users } from "lucide-react";
+import { Building2, Clock, Coins, Layers, LayoutGrid, Users } from "lucide-react";
 
-import { WfmPageHeader } from "@/components/workforce/atlas";
+import { WfmRegistryHeader } from "@/components/workforce/atlas";
+import { Button } from "@/components/ui/button";
 
 const CARDS: {
   href: Route;
@@ -12,6 +13,18 @@ const CARDS: {
   description: string;
   icon: typeof Building2;
 }[] = [
+  {
+    href: "/ar/workforce",
+    title: "مركز العمليات",
+    description: "العودة إلى لوحة القوى العاملة — الموظفون، الحضور، والماليات",
+    icon: LayoutGrid
+  },
+  {
+    href: "/ar/workforce/masters/currencies",
+    title: "العملات",
+    description: "USD مرجع — معادل كل عملة بالدولار",
+    icon: Coins
+  },
   {
     href: "/ar/workforce/masters/halls",
     title: "القاعات",
@@ -41,11 +54,16 @@ const CARDS: {
 export function MastersHub() {
   return (
     <div className="space-y-6">
-      <WfmPageHeader
-        kicker="المرجعيات · Masters"
+      <WfmRegistryHeader
+        kicker="WFM · MASTERS"
         title="جداول المرجعية"
-        description="إدارة القاعات والأقسام والأدوار والورديات — التعطيل يخفي السجل من نماذج الموظفين دون حذفه."
-        icon={<Building2 className="h-3.5 w-3.5 text-atlas-brand" aria-hidden />}
+        titleIcon={<Building2 className="h-8 w-8 text-atlas-brand" aria-hidden />}
+        description="إدارة القاعات والأقسام والأدوار والورديات والعملات — التعطيل يخفي السجل من النماذج دون حذفه."
+        actions={
+          <Button type="button" variant="atlasOutline" className="rounded-sm" asChild>
+            <Link href={"/ar/workforce" as Route}>مركز العمليات</Link>
+          </Button>
+        }
       />
       <div className="grid gap-4 sm:grid-cols-2">
         {CARDS.map((card) => {
