@@ -33,7 +33,7 @@ class OvertimeRequest extends Model
 
     protected function casts(): array
     {
-        return array_merge(self::auditorDateCasts(), [
+        return [
             'overtime_date' => 'date',
             'duration_hours' => 'decimal:2',
             'weighted_hours' => 'decimal:2',
@@ -41,7 +41,7 @@ class OvertimeRequest extends Model
             'approved_hours' => 'decimal:2',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
-        ]);
+        ];
     }
 
     public function employee(): BelongsTo

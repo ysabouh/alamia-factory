@@ -15,7 +15,7 @@ export function DashboardShell({ dashboard }: { dashboard: LiveDashboard }) {
   const refreshDashboard = useCallback(() => router.refresh(), [router]);
   useLiveDashboardEvents(refreshDashboard);
   const runningCount = dashboard.machines.filter((m) => m.status === "running").length;
-  const downCount = dashboard.machines.filter((m) => m.status === "down").length;
+  const downCount = dashboard.machines.filter((m) => m.status === "breakdown").length;
   const maintenanceCount = dashboard.machines.filter((m) => m.status === "maintenance").length;
 
   return (

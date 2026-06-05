@@ -20,9 +20,9 @@ class Material extends Model
 
     protected function casts(): array
     {
-        return array_merge(self::auditorDateCasts(), [
+        return [
             'minimum_stock' => 'decimal:3',
             'is_active' => 'boolean',
-        ]);
+        ];
     }
 }

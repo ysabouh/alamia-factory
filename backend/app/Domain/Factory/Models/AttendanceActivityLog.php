@@ -40,6 +40,6 @@ class AttendanceActivityLog extends Model
             'action' => $action,
             'payload' => $payload,
             'created_at' => now(),
-        ]);
+        ];
     }
 }

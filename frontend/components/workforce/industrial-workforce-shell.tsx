@@ -11,9 +11,9 @@ const LINKS: { href: Route; label: string; icon: typeof Users }[] = [
   { href: "/ar/workforce", label: "مركز العمليات", icon: LayoutGrid },
   { href: "/ar/workforce/employees", label: "سجل العاملين", icon: Users },
   { href: "/ar/workforce/attendance", label: "الحضور والرواتب", icon: CalendarCheck },
-  { href: "/ar/workforce/masters", label: "المرجعيات", icon: BookMarked },
   { href: "/ar/workforce/crew", label: "لوحة الطاقم", icon: Activity },
   { href: "/ar/workforce/finance", label: "القوى المالية", icon: Wallet },
+  { href: "/ar/workforce/masters", label: "المرجعيات", icon: BookMarked },
   { href: "/ar/workforce/access", label: "الصلاحيات", icon: Shield }
 ];
 

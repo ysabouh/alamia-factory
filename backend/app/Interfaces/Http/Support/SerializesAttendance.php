@@ -104,7 +104,7 @@ trait SerializesAttendance
             'approvedAt' => $o->approved_at?->toIso8601String(),
             'rejectedAt' => $o->rejected_at?->toIso8601String(),
             'rejectionReason' => $o->rejection_reason,
-            'updatedAt' => $o->updated_date?->toIso8601String(),
+            'updatedAt' => $o->updated_at?->toIso8601String(),
             'updatedByName' => $updatedBy?->name ?? $updatedBy?->email,
             'isActive' => $o->deleted_at === null,
             'deletedAt' => $o->deleted_at?->toIso8601String(),

@@ -25,8 +25,6 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->dateTime('created_date')->nullable();
-            $table->dateTime('updated_date')->nullable();
             $table->timestamps();
 
             $table->index(['employee_id', 'is_active'], 'employee_shifts_employee_active_idx');
@@ -71,8 +69,6 @@ return new class extends Migration
 
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->dateTime('created_date')->nullable();
-            $table->dateTime('updated_date')->nullable();
             $table->timestamps();
             $table->softDeletes();
 
@@ -96,8 +92,6 @@ return new class extends Migration
             $table->text('rejection_reason')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->dateTime('created_date')->nullable();
-            $table->dateTime('updated_date')->nullable();
             $table->timestamps();
             $table->softDeletes();
 

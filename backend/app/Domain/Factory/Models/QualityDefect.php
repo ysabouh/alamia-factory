@@ -2,29 +2,27 @@
 
 namespace App\Domain\Factory\Models;
 
-use App\Domain\Factory\Models\Concerns\TracksAuditorColumns;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class QualityDefect extends Model
 {
-    use TracksAuditorColumns;
-
     protected $fillable = [
-        'quality_inspection_id',
-        'defect_type',
-        'quantity',
-        'severity',
-        'notes',
+        'code',
+        'name',
+        'description',
+        'is_active',
     ];
 
     protected function casts(): array
     {
-        return self::auditorDateCasts();
+        return [
+            'is_active' => 'boolean',
+        ];
     }
 
-    public function inspection(): BelongsTo
+    public function inspectionLinks(): HasMany
     {
-        return $this->belongsTo(QualityInspection::class, 'quality_inspection_id');
+        return $this->hasMany(QualityInspectionDefect::class, 'defect_id');
     }
 }

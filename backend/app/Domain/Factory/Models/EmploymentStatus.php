@@ -22,7 +22,7 @@ class EmploymentStatus extends Model
 
     protected function casts(): array
     {
-        return self::auditorDateCasts();
+        return [];
     }
 
     public function employees(): HasMany

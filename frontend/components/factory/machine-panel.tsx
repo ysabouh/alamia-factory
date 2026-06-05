@@ -8,6 +8,7 @@ import type { MachineSnapshot } from "@/types/factory";
 
 const typeLabels: Record<MachineSnapshot["type"], string> = {
   injection: "حقن",
+  blow: "نفخ",
   blow_molding: "نفخ",
   line: "خط إنتاج"
 };
@@ -16,7 +17,7 @@ export function MachinePanel({ machine }: { machine: MachineSnapshot }) {
   const efficiency = Math.max(42, Math.min(98, Math.round(100 - machine.wasteKgToday * 2 - machine.downtimeMinutesToday / 3)));
   const pressure = machine.type === "injection" ? 142 : machine.type === "blow_molding" ? 8.4 : 62;
   const temperature = machine.type === "injection" ? 218 : machine.type === "blow_molding" ? 176 : 32;
-  const statusTone = machine.status === "running" ? "cyan-glow" : machine.status === "down" ? "danger-glow" : "";
+  const statusTone = machine.status === "running" ? "cyan-glow" : machine.status === "breakdown" ? "danger-glow" : "";
 
   return (
     <Card className={`scada-panel scanlines neon-border overflow-hidden rounded-3xl ${statusTone}`}>

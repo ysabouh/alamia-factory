@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -44,6 +44,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  productionApi,
+  type ProductionDashboardKpisJson,
+  type WorkOrderJson,
+  type WorkOrderStatus
+} from "@/lib/api/production-client";
 import type { LiveDashboard, MachineSnapshot } from "@/types/factory";
 
 export type OrderStatus = "planned" | "running" | "paused" | "completed" | "delayed" | "quality_issue";
@@ -78,11 +84,55 @@ const statusConfig: Record<
   quality_issue: { label: "جودة", variant: "destructive" }
 };
 
+const productPlaceholders = [
+  { img: "https://images.pexels.com/photos/3735747/pexels-photo-3735747.jpeg?auto=compress&w=400" },
+  { img: "https://images.pexels.com/photos/802221/pexels-photo-802221.jpeg?auto=compress&w=400" },
+  { img: "https://images.pexels.com/photos/37347/object-macro-tape-37347.jpeg?auto=compress&w=400" }
+];
+
+function mapApiStatus(status: WorkOrderStatus): OrderStatus {
+  if (status === "running") return "running";
+  if (status === "paused") return "paused";
+  if (status === "completed") return "completed";
+  if (status === "cancelled") return "planned";
+  return "planned";
+}
+
+function mapWorkOrdersToCards(apiOrders: WorkOrderJson[], dashboard: LiveDashboard): ProductionOrder[] {
+  if (!apiOrders.length) return buildOrdersFromDashboard(dashboard);
+
+  return apiOrders.map((order, i) => {
+    const placeholder = productPlaceholders[i % productPlaceholders.length];
+    const machineId = order.machineId ? Number(order.machineId) : dashboard.machines[i % dashboard.machines.length]?.id ?? 0;
+    const machine = dashboard.machines.find((m) => m.id === machineId);
+    const produced = order.producedQuantity;
+    const target = order.plannedQuantity;
+    const pct = produced / Math.max(1, target);
+    return {
+      id: order.orderNo,
+      productName: order.productName ?? order.productCode ?? "—",
+      productImage: placeholder.img,
+      targetQty: target,
+      producedQty: produced,
+      hall: machine?.type === "injection" ? "صالة الحقن" : machine?.type === "blow_molding" ? "صالة النفخ" : "خط الإنتاج",
+      machineCode: order.machineCode ?? machine?.code ?? "—",
+      machineId,
+      mold: order.moldCode ?? machine?.currentMold ?? "—",
+      materials: machine?.type === "blow_molding" ? "PET" : "PP / Masterbatch",
+      operator: order.supervisorName ?? machine?.operator ?? "غير معيّن",
+      shift: order.shiftName ?? "—",
+      eta: order.endTime ? new Date(order.endTime).toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" }) : "—",
+      quality: pct >= 0.95 ? "pass" : pct >= 0.8 ? "warning" : "fail",
+      status: mapApiStatus(order.status)
+    };
+  });
+}
+
 function buildOrdersFromDashboard(dashboard: LiveDashboard): ProductionOrder[] {
   const products = [
-    { name: "غطاء 5 لتر HDPE", img: "https://images.pexels.com/photos/3735747/pexels-photo-3735747.jpeg?auto=compress&w=400" },
-    { name: "عبوة 1 لتر PET", img: "https://images.pexels.com/photos/802221/pexels-photo-802221.jpeg?auto=compress&w=400" },
-    { name: "يد بلاستيك PP", img: "https://images.pexels.com/photos/37347/object-macro-tape-37347.jpeg?auto=compress&w=400" }
+    { name: "غطاء 5 لتر HDPE", img: productPlaceholders[0].img },
+    { name: "عبوة 1 لتر PET", img: productPlaceholders[1].img },
+    { name: "يد بلاستيك PP", img: productPlaceholders[2].img }
   ];
   return dashboard.machines.map((m, i) => {
     const p = products[i % products.length];
@@ -123,16 +173,46 @@ function buildOrdersFromDashboard(dashboard: LiveDashboard): ProductionOrder[] {
 type Props = { dashboard: LiveDashboard };
 
 export function ProductionOrdersCommandCenter({ dashboard }: Props) {
-  const orders = useMemo(() => buildOrdersFromDashboard(dashboard), [dashboard]);
-  const [selectedId, setSelectedId] = useState<string | null>(orders[0]?.id ?? null);
+  const [apiOrders, setApiOrders] = useState<WorkOrderJson[]>([]);
+  const [kpis, setKpis] = useState<ProductionDashboardKpisJson | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const [ordersRes, kpisRes] = await Promise.all([
+          productionApi.listOrders({ pageSize: 50, status: "running" }),
+          productionApi.dashboardKpis()
+        ]);
+        const allOrders =
+          ordersRes.data.length > 0
+            ? ordersRes.data
+            : (await productionApi.listOrders({ pageSize: 12 })).data;
+        setApiOrders(allOrders);
+        setKpis(kpisRes.data);
+      } catch {
+        setApiOrders([]);
+        setKpis(null);
+      }
+    })();
+  }, []);
+
+  const orders = useMemo(
+    () => (apiOrders.length ? mapWorkOrdersToCards(apiOrders, dashboard) : buildOrdersFromDashboard(dashboard)),
+    [apiOrders, dashboard]
+  );
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!selectedId && orders[0]) setSelectedId(orders[0].id);
+  }, [orders, selectedId]);
   const selected = orders.find((o) => o.id === selectedId) ?? null;
   const selectedMachine = dashboard.machines.find((m) => m.id === selected?.machineId);
 
   const overview = useMemo(() => {
-    const active = orders.filter((o) => o.status === "running").length;
-    const completed = orders.filter((o) => o.status === "completed").length;
+    const active = kpis?.orders.running ?? orders.filter((o) => o.status === "running").length;
+    const completed = kpis?.orders.completed ?? orders.filter((o) => o.status === "completed").length;
     const delayed = orders.filter((o) => o.status === "delayed" || o.status === "quality_issue").length;
-    const totalOut = orders.reduce((s, o) => s + o.producedQty, 0);
+    const totalOut =
+      kpis?.production.daily.reduce((s, d) => s + d.goodQuantity, 0) ?? orders.reduce((s, o) => s + o.producedQty, 0);
     const efficiency = Math.round(
       orders.reduce((s, o) => s + (o.producedQty / Math.max(1, o.targetQty)) * 100, 0) / Math.max(1, orders.length)
     );
@@ -141,7 +221,7 @@ export function ProductionOrdersCommandCenter({ dashboard }: Props) {
       Math.round(dashboard.kpis.machineUtilization * 0.92 + (100 - dashboard.kpis.wasteRate) * 0.08)
     );
     return { active, completed, delayed, efficiency, totalOut, utilization: dashboard.kpis.machineUtilization, oee };
-  }, [orders, dashboard.kpis]);
+  }, [orders, dashboard.kpis, kpis]);
 
   const trendData = dashboard.productionTrend.map((t) => ({
     name: t.label,
@@ -193,7 +273,7 @@ export function ProductionOrdersCommandCenter({ dashboard }: Props) {
             <CardContent className="p-8 text-center text-sm text-muted-foreground">اختر أمر إنتاج لعرض القياسات الحية</CardContent>
           </Card>
         )}
-        <QualityMaterialPanel dashboard={dashboard} orders={orders} />
+        <QualityMaterialPanel dashboard={dashboard} orders={orders} kpis={kpis} />
       </section>
 
       <OperatorShiftSection orders={orders} />
@@ -238,6 +318,12 @@ function OverviewHeader({
           مراقبة وتنسيق أوامر التصنيع، الجدولة الحية، والتنفيذ على أرض الصالة في منظومة تشغيل واحدة.
         </p>
         <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
+          <Button variant="outline" size="sm" className="gap-2 rounded-full border-cyan-500/40 bg-background/80" asChild>
+            <Link href="/ar/production/orders">
+              <ClipboardList className="h-4 w-4" />
+              سجل الأوامر
+            </Link>
+          </Button>
           <Button variant="outline" size="sm" className="gap-2 rounded-full border-cyan-500/40 bg-background/80" asChild>
             <Link href="/ar/production/operations">
               <ClipboardList className="h-4 w-4" />
@@ -503,8 +589,16 @@ function MachineTelemetryPanel({ order, machine }: { order: ProductionOrder; mac
   );
 }
 
-function QualityMaterialPanel({ dashboard, orders }: { dashboard: LiveDashboard; orders: ProductionOrder[] }) {
-  const rejectRate = dashboard.kpis.wasteRate;
+function QualityMaterialPanel({
+  dashboard,
+  orders,
+  kpis
+}: {
+  dashboard: LiveDashboard;
+  orders: ProductionOrder[];
+  kpis: ProductionDashboardKpisJson | null;
+}) {
+  const rejectRate = kpis?.quality.failRate ?? dashboard.kpis.wasteRate;
   const avgEff =
     orders.length > 0 ? Math.round(orders.reduce((s, o) => s + (o.producedQty / o.targetQty) * 100, 0) / orders.length) : 0;
   return (
@@ -522,24 +616,25 @@ function QualityMaterialPanel({ dashboard, orders }: { dashboard: LiveDashboard;
             <span className="font-bold tabular-nums text-amber-600 dark:text-amber-400">{rejectRate}%</span>
           </div>
           <div className="flex justify-between gap-3">
-            <span className="text-foreground/85">عينات اليوم</span>
-            <span className="text-end font-medium text-foreground">42 مقبول · 3 إعادة فحص</span>
+            <span className="text-foreground/85">فحوصات الفترة</span>
+            <span className="text-end font-medium text-foreground">
+              {kpis ? `${kpis.quality.totalInspections} فحص · نجاح ${kpis.quality.passRate}%` : "42 مقبول · 3 إعادة فحص"}
+            </span>
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-medium text-foreground/90">تصنيف العيوب (آخر 24 ساعة)</p>
+            <p className="text-xs font-medium text-foreground/90">أكثر العيوب تكراراً</p>
             <div className="flex flex-wrap gap-2">
-              {[
-                { cat: "أبعاد", pct: 34, color: "bg-rose-500/80" },
-                { cat: "مسامير", pct: 28, color: "bg-amber-500/80" },
-                { cat: "لون", pct: 22, color: "bg-violet-500/80" },
-                { cat: "أخرى", pct: 16, color: "bg-slate-500/80" }
-              ].map((d) => (
+              {(kpis?.quality.topDefects.length ? kpis.quality.topDefects : [
+                { name: "أبعاد", quantity: 34 },
+                { name: "قصر حقن", quantity: 28 },
+                { name: "تشقق", quantity: 22 }
+              ]).map((d) => (
                 <span
-                  key={d.cat}
+                  key={d.name}
                   className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-foreground"
                 >
-                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${d.color}`} />
-                  {d.cat} {d.pct}%
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500/80" />
+                  {d.name} {d.quantity}
                 </span>
               ))}
             </div>

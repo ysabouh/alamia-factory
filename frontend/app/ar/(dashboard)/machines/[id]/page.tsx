@@ -1,22 +1,19 @@
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 
-import { MachinePassportPage } from "@/features/machines/machine-passport-page";
-import { api } from "@/lib/api/client";
-import { fallbackDashboard } from "@/lib/api/dashboard-fallback";
+import { MachineDetailWorkspace } from "@/features/machines/management/machine-detail-workspace";
 
-export default async function MachinePassportRoute({
-  params
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const resolved = await params;
-  const machineId = Number(resolved.id);
-  const dashboard = await api.liveDashboard().catch(() => fallbackDashboard);
-  const machine = dashboard.machines.find((m) => m.id === machineId);
+const RESERVED = new Set(["registry", "new", "edit"]);
 
-  if (!machine) {
-    notFound();
+export default async function MachineDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
+  if (RESERVED.has(id)) {
+    redirect(id === "new" ? "/ar/machines/new" : `/ar/machines/${id}`);
   }
 
-  return <MachinePassportPage machine={machine} />;
+  if (!/^\d+$/.test(id)) {
+    redirect("/ar/machines/registry");
+  }
+
+  return <MachineDetailWorkspace machineId={id} />;
 }

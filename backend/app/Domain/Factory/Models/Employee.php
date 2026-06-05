@@ -46,7 +46,7 @@ class Employee extends Model
 
     protected function casts(): array
     {
-        return array_merge(self::auditorDateCasts(), [
+        return [
             'is_active' => 'boolean',
             'birth_date' => 'date',
             'hire_date' => 'date',
@@ -54,7 +54,7 @@ class Employee extends Model
             'performance_score' => 'decimal:2',
             'reliability_score' => 'decimal:2',
             'safety_score' => 'decimal:2',
-        ]);
+        ];
     }
 
     protected $appends = [

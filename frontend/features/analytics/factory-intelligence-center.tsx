@@ -53,6 +53,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { LiveDashboard, MachineSnapshot } from "@/types/factory";
+import { MoldStatsPanel } from "@/features/molds/management/mold-stats-panel";
 
 type Timeline = "daily" | "weekly" | "monthly" | "yearly";
 
@@ -203,6 +204,8 @@ export function FactoryIntelligenceCenter({ dashboard }: Props) {
           <EnergyAnalytics machines={machines} />
           <InventoryAnalyticsBlock kpis={k} />
         </section>
+
+        <MoldStatsPanel compact />
 
         <PredictiveCards machines={machines} wasteRate={k.wasteRate} downtimeTotal={executive.downtime} />
       </div>

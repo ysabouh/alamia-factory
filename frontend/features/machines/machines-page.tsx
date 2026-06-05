@@ -28,6 +28,7 @@ import type { LiveDashboard, MachineSnapshot } from "@/types/factory";
 
 const typeLabel: Record<MachineSnapshot["type"], string> = {
   injection: "حقن بلاستيك",
+  blow: "نفخ",
   blow_molding: "نفخ",
   line: "خط إنتاج"
 };
@@ -56,7 +57,7 @@ export function MachinesPage({ dashboard }: { dashboard: LiveDashboard }) {
 
   const stats = useMemo(() => {
     const running = machines.filter((m) => m.status === "running").length;
-    const idle = machines.filter((m) => m.status === "idle").length;
+    const idle = machines.filter((m) => m.status === "stopped").length;
     const maintenance = machines.filter((m) => m.status === "maintenance").length;
     const totalOutput = machines.reduce((sum, m) => sum + m.producedPiecesToday, 0);
     const avgEfficiency = Math.round(
@@ -103,9 +104,9 @@ export function MachinesPage({ dashboard }: { dashboard: LiveDashboard }) {
           >
             <option value="all">كل الحالات</option>
             <option value="running">تشغيل</option>
-            <option value="idle">توقف</option>
+            <option value="stopped">توقف</option>
             <option value="maintenance">صيانة</option>
-            <option value="down">عطل</option>
+            <option value="breakdown">عطل</option>
           </select>
           <Button variant="industrial" className="gap-2">
             <CirclePlus className="h-4 w-4" />
@@ -176,7 +177,7 @@ function DepartmentZone({
   const running = machines.filter((m) => m.status === "running").length;
   const efficiency = Math.round(machines.reduce((sum, m) => sum + calcEfficiency(m), 0) / Math.max(1, machines.length));
   const output = machines.reduce((sum, m) => sum + m.producedPiecesToday, 0);
-  const health = Math.max(35, Math.min(100, efficiency - (machines.filter((m) => m.status === "down").length * 12)));
+  const health = Math.max(35, Math.min(100, efficiency - machines.filter((m) => m.status === "breakdown").length * 12));
   const toneClass =
     tone === "injection"
       ? "border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-transparent to-slate-500/10"
@@ -303,7 +304,7 @@ function MachineControlCard({
   const statusClass =
     machine.status === "running"
       ? "border-emerald-500/30 shadow-[0_0_0_1px_rgba(16,185,129,.25),0_0_35px_rgba(16,185,129,.18)]"
-      : machine.status === "down"
+      : machine.status === "breakdown"
         ? "border-rose-500/30"
         : "border-border";
   const departmentVisual =
@@ -436,7 +437,7 @@ function ProgressRing({ value, tone }: { value: number; tone: MachineSnapshot["s
   const radius = 22;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (Math.max(0, Math.min(100, value)) / 100) * circumference;
-  const stroke = tone === "running" ? "#10b981" : tone === "maintenance" ? "#f59e0b" : tone === "down" ? "#ef4444" : "#0ea5e9";
+  const stroke = tone === "running" ? "#10b981" : tone === "maintenance" ? "#f59e0b" : tone === "breakdown" ? "#ef4444" : "#0ea5e9";
 
   return (
     <div className="relative h-14 w-14">
@@ -462,7 +463,7 @@ function ProgressRing({ value, tone }: { value: number; tone: MachineSnapshot["s
 function StatusPill({ status }: { status: MachineSnapshot["status"] }) {
   if (status === "running") return <Badge variant="success">تشغيل</Badge>;
   if (status === "maintenance") return <Badge variant="warning">صيانة</Badge>;
-  if (status === "down") return <Badge variant="destructive">عطل</Badge>;
+  if (status === "breakdown") return <Badge variant="destructive">عطل</Badge>;
   return <Badge variant="secondary">متوقفة</Badge>;
 }
 
@@ -496,7 +497,7 @@ function FactoryMiniMap({ machines }: { machines: MachineSnapshot[] }) {
                       ? "bg-emerald-400 pulse-live"
                       : machine.status === "maintenance"
                         ? "bg-amber-400"
-                        : machine.status === "down"
+                        : machine.status === "breakdown"
                           ? "bg-rose-400"
                           : "bg-slate-400"
                   }`}

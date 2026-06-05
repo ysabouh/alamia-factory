@@ -20,10 +20,10 @@ class JobRole extends Model
 
     protected function casts(): array
     {
-        return array_merge(self::auditorDateCasts(), [
+        return [
             'role_level' => 'integer',
             'is_active' => 'boolean',
-        ]);
+        ];
     }
 
     public function employees(): HasMany

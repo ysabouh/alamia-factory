@@ -16,6 +16,7 @@ const cardFade = {
 
 const machineTypeArabic: Record<MachineSnapshot["type"], string> = {
   injection: "آلة حقن",
+  blow: "آلة نفخ",
   blow_molding: "آلة نفخ",
   line: "خط إنتاج"
 };

@@ -23,10 +23,10 @@ class MachineAssignment extends Model
 
     protected function casts(): array
     {
-        return array_merge(self::auditorDateCasts(), [
+        return [
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
-        ]);
+        ];
     }
 
     public function machine(): BelongsTo

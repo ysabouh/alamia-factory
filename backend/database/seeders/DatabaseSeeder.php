@@ -7,8 +7,12 @@ use App\Domain\Factory\Models\Employee;
 use App\Domain\Factory\Models\EmploymentStatus;
 use App\Domain\Factory\Models\Hall;
 use App\Domain\Factory\Models\JobRole;
+use App\Domain\Factory\Models\BlowMachineSpec;
+use App\Domain\Factory\Models\InjectionMachineSpec;
 use App\Domain\Factory\Models\Machine;
+use App\Domain\Factory\Models\MachineCounter;
 use App\Domain\Factory\Models\MachineType;
+use App\Domain\Factory\Models\MaintenanceTicket;
 use App\Domain\Factory\Models\Mold;
 use App\Domain\Factory\Models\Product;
 use App\Domain\Factory\Models\Shift;
@@ -24,10 +28,24 @@ class DatabaseSeeder extends Seeder
     {
         $permissions = [
             'machines.view',
+            'machines.manage',
             'machines.update_status',
+            'machines.record_counters',
+            'machines.manage_maintenance',
+            'molds.view',
+            'molds.manage',
+            'molds.manage_maintenance',
+            'products.view',
+            'products.manage',
+            'assembly.view',
+            'assembly.manage',
             'production.record',
+            'production.manage',
+            'production.execute',
             'production.approve',
             'production.reports',
+            'quality.inspect',
+            'quality.manage_checklists',
             'maintenance.open_ticket',
             'maintenance.close_ticket',
             'inventory.view',
@@ -64,9 +82,22 @@ class DatabaseSeeder extends Seeder
 
         Role::findOrCreate('supervisor', $guard)->givePermissionTo([
             'machines.view',
+            'machines.manage',
             'machines.update_status',
+            'machines.record_counters',
+            'machines.manage_maintenance',
+            'molds.view',
+            'molds.manage',
+            'molds.manage_maintenance',
+            'products.view',
+            'products.manage',
+            'assembly.view',
+            'assembly.manage',
             'production.record',
+            'production.manage',
+            'production.execute',
             'production.reports',
+            'quality.inspect',
             'maintenance.open_ticket',
             'inventory.view',
             'workforce.view',
@@ -120,27 +151,85 @@ class DatabaseSeeder extends Seeder
         );
         $user->syncRoles([$super['role']]);
 
-        $injection = MachineType::firstOrCreate(['code' => 'injection'], ['name' => 'حقن']);
-        $blow = MachineType::firstOrCreate(['code' => 'blow_molding'], ['name' => 'نفخ']);
+        $injection = MachineType::firstOrCreate(['code' => 'injection'], ['name' => 'حقن', 'is_active' => true]);
+        $blow = MachineType::firstOrCreate(['code' => 'blow'], ['name' => 'نفخ', 'is_active' => true]);
 
         $product = Product::firstOrCreate(
             ['code' => 'P-5L-CAP'],
-            ['name' => 'غطاء 5 لتر', 'unit' => 'piece', 'standard_weight_grams' => 40]
+            [
+                'product_code' => 'P-5L-CAP',
+                'sku' => 'P-5L-CAP',
+                'name' => 'غطاء 5 لتر',
+                'product_name_ar' => 'غطاء 5 لتر',
+                'product_name_en' => '5L Cap',
+                'unit' => 'piece',
+                'standard_weight_grams' => 40,
+                'product_type' => 'finished_good',
+                'manufacturing_type' => 'injection',
+                'product_status' => 'active',
+                'is_active' => true,
+            ]
         );
 
         Mold::firstOrCreate(
             ['code' => 'MOLD-CAP-5L'],
-            ['product_id' => $product->id, 'name' => 'قالب غطاء 5 لتر', 'cavity_count' => 4]
+            [
+                'product_id' => $product->id,
+                'name' => 'قالب غطاء 5 لتر',
+                'mold_type' => 'injection',
+                'status' => 'active',
+                'cavity_count' => 4,
+                'product_name' => 'غطاء 5 لتر',
+            ]
         );
 
-        Machine::firstOrCreate(
+        $inj = Machine::firstOrCreate(
             ['code' => 'INJ-01'],
-            ['machine_type_id' => $injection->id, 'name' => 'حقن 350 طن', 'capacity' => '350 ton', 'status' => 'idle']
+            [
+                'machine_type_id' => $injection->id,
+                'name' => 'حقن 350 طن',
+                'brand' => 'Haitian',
+                'model' => 'MA3500',
+                'factory_section' => 'قاعة الحقن',
+                'status' => 'stopped',
+                'is_active' => true,
+            ]
+        );
+        InjectionMachineSpec::firstOrCreate(
+            ['machine_id' => $inj->id],
+            ['clamping_force_ton' => 350, 'shot_weight_gram' => 450, 'heating_zones_count' => 5]
         );
 
-        Machine::firstOrCreate(
+        $blw = Machine::firstOrCreate(
             ['code' => 'BLW-01'],
-            ['machine_type_id' => $blow->id, 'name' => 'نفخ عبوات', 'capacity' => '2L', 'status' => 'idle']
+            [
+                'machine_type_id' => $blow->id,
+                'name' => 'نفخ عبوات',
+                'brand' => 'Sidel',
+                'factory_section' => 'قاعة النفخ',
+                'status' => 'running',
+                'is_active' => true,
+            ]
+        );
+        BlowMachineSpec::firstOrCreate(
+            ['machine_id' => $blw->id],
+            ['bottle_volume_max_ml' => 2000, 'cavities_count' => 6, 'production_capacity_bph' => 1200]
+        );
+
+        MachineCounter::firstOrCreate(
+            ['machine_id' => $inj->id, 'counter_date' => now()->toDateString()],
+            ['produced_units' => 4200, 'rejected_units' => 85, 'running_hours' => 9.5]
+        );
+
+        MaintenanceTicket::firstOrCreate(
+            ['machine_id' => $inj->id, 'title' => 'عطل حساس الحرارة'],
+            [
+                'ticket_kind' => 'breakdown',
+                'status' => 'open',
+                'failure_date' => now()->toDateString(),
+                'severity' => 'high',
+                'description' => 'ارتفاع غير طبيعي في منطقة الحقن',
+            ]
         );
 
         Shift::whereNull('code')->delete();
@@ -165,6 +254,10 @@ class DatabaseSeeder extends Seeder
         $this->bootstrapWorkforcePeople($employee);
 
         $this->call(CurrencySeeder::class);
+        $this->call(QualityDefectSeeder::class);
+
+        // بيانات الإنتاج التجريبية — لا تُشغَّل تلقائياً حتى لا تُستبدل معطياتك.
+        // للتوليد الآمن: php artisan factory:seed-demo
     }
 
     /**

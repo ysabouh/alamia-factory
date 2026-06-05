@@ -3,6 +3,7 @@
 namespace App\Application\Maintenance;
 
 use App\Domain\Factory\Enums\MachineStatus;
+use App\Domain\Factory\Enums\MaintenanceTicketKind;
 use App\Domain\Factory\Models\Machine;
 use App\Domain\Factory\Models\MaintenanceTicket;
 use App\Infrastructure\Broadcasting\MachineStatusUpdated;
@@ -16,13 +17,18 @@ class OpenMaintenanceTicket
         return DB::transaction(function () use ($data, $userId): MaintenanceTicket {
             $ticket = MaintenanceTicket::create([
                 ...$data,
+                'ticket_kind' => $data['ticket_kind'] ?? 'breakdown',
+                'failure_date' => $data['failure_date'] ?? now()->toDateString(),
                 'created_by' => $userId,
                 'downtime_started_at' => $data['downtime_started_at'] ?? now(),
             ]);
 
             $machine = Machine::findOrFail($data['machine_id']);
+            $kind = $data['ticket_kind'] ?? MaintenanceTicketKind::Breakdown->value;
             $machine->update([
-                'status' => MachineStatus::Maintenance,
+                'status' => $kind === MaintenanceTicketKind::Breakdown->value
+                    ? MachineStatus::Breakdown
+                    : MachineStatus::Maintenance,
                 'status_note' => $data['title'],
                 'last_status_changed_at' => now(),
             ]);

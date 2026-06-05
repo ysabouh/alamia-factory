@@ -20,9 +20,9 @@ class Hall extends Model
 
     protected function casts(): array
     {
-        return array_merge(self::auditorDateCasts(), [
+        return [
             'is_active' => 'boolean',
-        ]);
+        ];
     }
 
     public function departments(): HasMany

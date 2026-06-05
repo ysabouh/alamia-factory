@@ -42,7 +42,7 @@ function machinePressureBar(m: MachineSnapshot) {
 }
 
 function nodeVisualState(m: MachineSnapshot): NodeVisualState {
-  if (m.status === "down") return "critical";
+  if (m.status === "breakdown") return "critical";
   if (m.status === "maintenance") return "maintenance";
   if (m.activeAlert) return "warning";
   if (m.status === "running") return "running";
@@ -251,7 +251,7 @@ export function MiniFactoryFloorMap({ halls }: Props) {
                 const hallData = hallMap[hid];
                 const ms = hallData?.machines ?? [];
                 const running = ms.filter((m) => m.status === "running").length;
-                const alerts = ms.filter((m) => !!m.activeAlert || m.status === "down").length;
+                const alerts = ms.filter((m) => !!m.activeAlert || m.status === "breakdown").length;
                 const eff = avgEfficiency(ms);
                 const heat = ms.length === 0 ? 0 : running / ms.length;
 

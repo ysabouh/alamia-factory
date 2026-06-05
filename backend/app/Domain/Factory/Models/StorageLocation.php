@@ -18,7 +18,7 @@ class StorageLocation extends Model
 
     protected function casts(): array
     {
-        return self::auditorDateCasts();
+        return [];
     }
 
     public function warehouse(): BelongsTo

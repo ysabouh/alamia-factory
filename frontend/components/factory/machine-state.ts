@@ -22,9 +22,9 @@ export const machineStateVisuals: Record<IndustrialMachineState, MachineStateVis
     animationClass: "pulse-live",
     description: "الماكينة تعمل ضمن الحدود الطبيعية وتغذي لوحة الإنتاج الحية."
   },
-  idle: {
-    label: "انتظار تشغيل",
-    shortLabel: "IDLE",
+  stopped: {
+    label: "متوقفة",
+    shortLabel: "STP",
     panelClass: "border-amber-400/25 bg-amber-400/10",
     lightClass: "bg-amber-300",
     glowClass: "",
@@ -40,9 +40,9 @@ export const machineStateVisuals: Record<IndustrialMachineState, MachineStateVis
     animationClass: "pulse-live",
     description: "الماكينة تحت تدخل فني ويجب ربط الحالة ببلاغ صيانة."
   },
-  down: {
+  breakdown: {
     label: "عطل حرج",
-    shortLabel: "DOWN",
+    shortLabel: "BRK",
     panelClass: "border-red-500/30 bg-red-500/10",
     lightClass: "bg-red-400",
     glowClass: "shadow-glowRed",
@@ -69,6 +69,13 @@ export const machineStateVisuals: Record<IndustrialMachineState, MachineStateVis
   }
 };
 
-export function getMachineStateVisual(status: IndustrialMachineState): MachineStateVisual {
-  return machineStateVisuals[status];
+export function normalizeMachineStatus(status: string): MachineStatus {
+  if (status === "idle") return "stopped";
+  if (status === "down") return "breakdown";
+  return status as MachineStatus;
+}
+
+export function getMachineStateVisual(status: IndustrialMachineState | string): MachineStateVisual {
+  const key = normalizeMachineStatus(status);
+  return machineStateVisuals[key] ?? machineStateVisuals.offline;
 }

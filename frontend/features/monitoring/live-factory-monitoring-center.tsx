@@ -45,7 +45,7 @@ import type { LiveDashboard, MachineSnapshot } from "@/types/factory";
 type VisualStatus = "running" | "warning" | "critical" | "maintenance" | "offline";
 
 function visualStatus(m: MachineSnapshot): VisualStatus {
-  if (m.status === "down") return "critical";
+  if (m.status === "breakdown") return "critical";
   if (m.status === "maintenance") return "maintenance";
   if (m.activeAlert) return "warning";
   if (m.status === "running") return "running";
@@ -77,7 +77,7 @@ function telemetryFor(machine: MachineSnapshot, tick: number) {
     runtime: runtime.toFixed(1),
     outPerH,
     vibration: (1.2 + machine.id * 0.08 + Math.sin(tick / 2) * 0.15).toFixed(2),
-    err: machine.status === "down" ? "E-4401" : machine.activeAlert ? "WARN-12" : "OK"
+    err: machine.status === "breakdown" ? "E-4401" : machine.activeAlert ? "WARN-12" : "OK"
   };
 }
 
@@ -103,9 +103,9 @@ export function LiveFactoryMonitoringCenter({ dashboard }: Props) {
   }, []);
 
   const running = machines.filter((m) => m.status === "running").length;
-  const stopped = machines.filter((m) => m.status === "idle" || m.status === "down").length;
+  const stopped = machines.filter((m) => m.status === "stopped" || m.status === "breakdown").length;
   const criticalAlerts =
-    dashboard.alerts.filter((a) => a.severity === "critical").length + machines.filter((m) => m.status === "down").length;
+    dashboard.alerts.filter((a) => a.severity === "critical").length + machines.filter((m) => m.status === "breakdown").length;
   const warnCount = machines.filter((m) => m.activeAlert).length + dashboard.alerts.filter((a) => a.severity === "warning").length;
 
   const liveRate = useMemo(() => {
@@ -440,7 +440,7 @@ function AlertsStreamPanel({ dashboard, machines }: { dashboard: LiveDashboard; 
   const items: Array<{ text: string; sev: "crit" | "warn" | "info" }> = [];
   machines.forEach((m) => {
     if (m.activeAlert) items.push({ text: `${m.code}: ${m.activeAlert}`, sev: "warn" });
-    if (m.status === "down") items.push({ text: `${m.code}: عطل تشغيل`, sev: "crit" });
+    if (m.status === "breakdown") items.push({ text: `${m.code}: عطل تشغيل`, sev: "crit" });
     if (m.status === "maintenance") items.push({ text: `${m.code}: صيانة نشطة`, sev: "info" });
   });
   dashboard.alerts.forEach((a) => {

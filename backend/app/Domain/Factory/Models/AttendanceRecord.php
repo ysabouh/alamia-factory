@@ -38,7 +38,7 @@ class AttendanceRecord extends Model
 
     protected function casts(): array
     {
-        return array_merge(self::auditorDateCasts(), [
+        return [
             'attendance_date' => 'date',
             'check_in' => 'datetime',
             'check_out' => 'datetime',
@@ -50,7 +50,7 @@ class AttendanceRecord extends Model
             'overtime_pay' => 'decimal:2',
             'friday_overtime_pay' => 'decimal:2',
             'total_pay' => 'decimal:2',
-        ]);
+        ];
     }
 
     public function employee(): BelongsTo

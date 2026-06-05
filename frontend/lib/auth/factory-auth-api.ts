@@ -14,6 +14,7 @@ export type FactoryAuthUser = {
   id: number;
   name: string;
   email: string;
+  employeeId?: string | null;
   roles: string[];
   permissions: string[];
 };

@@ -69,6 +69,7 @@ return new class extends Migration
             $table->id();
             $table->string('code')->unique();
             $table->string('name');
+            $table->timestamps();
         });
 
         Schema::create('machines', function (Blueprint $table): void {

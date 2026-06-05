@@ -20,10 +20,10 @@ class CustomerOrderItem extends Model
 
     protected function casts(): array
     {
-        return array_merge(self::auditorDateCasts(), [
+        return [
             'quantity' => 'decimal:3',
             'unit_price' => 'decimal:2',
-        ]);
+        ];
     }
 
     public function order(): BelongsTo

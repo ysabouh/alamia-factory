@@ -20,9 +20,10 @@ export async function forwardRequestToUpstream(
   const lang = request.headers.get("accept-language");
   if (lang) headers.set("accept-language", lang);
 
-  let body: string | undefined;
+  let requestBody: ArrayBuffer | undefined;
   if (request.method !== "GET" && request.method !== "HEAD") {
-    body = await request.text();
+    const raw = await request.arrayBuffer();
+    requestBody = raw.byteLength > 0 ? raw : undefined;
     const ct = request.headers.get("content-type");
     if (ct) headers.set("content-type", ct);
   }
@@ -31,14 +32,14 @@ export async function forwardRequestToUpstream(
     const upstream = await fetch(target, {
       method: request.method,
       headers,
-      body: body === "" ? undefined : body,
+      body: requestBody,
       redirect: "manual",
       cache: "no-store",
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)
     });
 
-    const text = await upstream.text();
-    const out = new NextResponse(text, { status: upstream.status });
+    const responseBody = upstream.status === 204 ? null : await upstream.text();
+    const out = new NextResponse(responseBody, { status: upstream.status });
     const passCt = upstream.headers.get("content-type");
     if (passCt) out.headers.set("content-type", passCt);
     return out;
@@ -48,8 +49,4 @@ export async function forwardRequestToUpstream(
         message: "تعذّر الاتصال بخادم Laravel",
         hint: "شغّل RUN.cmd وتأكد أن Laravel يعمل على المنفذ 8000",
         attempted: target
-      },
-      { status: 503 }
-    );
-  }
-}
+      

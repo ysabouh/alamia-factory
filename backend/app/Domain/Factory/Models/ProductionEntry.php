@@ -25,11 +25,11 @@ class ProductionEntry extends Model
 
     protected function casts(): array
     {
-        return array_merge(self::auditorDateCasts(), [
+        return [
             'entry_date' => 'date',
             'produced_weight_kg' => 'decimal:3',
             'piece_weight_grams' => 'decimal:3',
-        ]);
+        ];
     }
 
     public function machine(): BelongsTo

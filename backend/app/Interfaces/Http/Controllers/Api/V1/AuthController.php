@@ -18,11 +18,19 @@ class AuthController
             'device_name' => ['nullable', 'string'],
         ]);
 
-        $user = User::query()->where('email', $credentials['email'])->first();
+        $email = strtolower(trim($credentials['email']));
+
+        $user = User::query()->where('email', $email)->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'email' => [__('factory.invalid_credentials')],
+            ]);
+        }
+
+        if (! $user->is_active) {
+            throw ValidationException::withMessages([
+                'email' => [__('factory.account_inactive')],
             ]);
         }
 
@@ -32,6 +40,7 @@ class AuthController
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'employeeId' => $user->employee_id ? (string) $user->employee_id : null,
                 'roles' => $user->roleNamesForApi(),
                 'permissions' => $user->permissionNamesForApi(),
             ],
@@ -46,6 +55,7 @@ class AuthController
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            'employeeId' => $user->employee_id ? (string) $user->employee_id : null,
             'roles' => $user->roleNamesForApi(),
             'permissions' => $user->permissionNamesForApi(),
         ]);

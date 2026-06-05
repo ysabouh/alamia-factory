@@ -12,7 +12,6 @@ import {
   Palette,
   Factory,
   Truck,
-  Gauge,
   LayoutDashboard,
   MoonStar,
   Radio,
@@ -27,6 +26,8 @@ import {
 
 import { useFactoryAuth } from "@/contexts/factory-auth-context";
 import { cn } from "@/lib/utils";
+import { MachinesNavGroup } from "@/components/factory/machines-nav-group";
+import { ProductionNavGroup } from "@/components/factory/production-nav-group";
 
 function navItemActive(pathname: string, href: string) {
   if (pathname === href) return true;
@@ -37,8 +38,6 @@ function navItemActive(pathname: string, href: string) {
 const navigation = [
   { href: "/ar", label: "الرئيسية", icon: LayoutDashboard },
   { href: "/ar/floor", label: "صالة الإنتاج", icon: Factory },
-  { href: "/ar/machines", label: "الماكينات", icon: Gauge },
-  { href: "/ar/production", label: "أوامر الإنتاج", icon: ClipboardList },
   { href: "/ar/inventory", label: "المخزون الذكي", icon: Boxes },
   { href: "/ar/fleet", label: "الأسطول والمركبات", icon: Truck },
   { href: "/ar/intelligence", label: "الذكاء والتحليلات", icon: Brain },
@@ -81,11 +80,10 @@ function SidebarNavSections({
   return (
     <>
       <nav className="mt-5 grid gap-1.5">
-        {navigation.map((item) => {
+        {navigation.map((item, index) => {
           const Icon = item.icon;
           const active = navItemActive(pathname, item.href);
-
-          return (
+          const link = (
             <Link
               key={item.href}
               href={item.href as Route}
@@ -99,6 +97,18 @@ function SidebarNavSections({
               {item.label}
             </Link>
           );
+
+          if (index === 1) {
+            return (
+              <div key="floor-and-machines" className="grid gap-1.5">
+                {link}
+                <MachinesNavGroup pathname={pathname} onNavigate={onNavigate} />
+                <ProductionNavGroup pathname={pathname} onNavigate={onNavigate} />
+              </div>
+            );
+          }
+
+          return link;
         })}
       </nav>
 

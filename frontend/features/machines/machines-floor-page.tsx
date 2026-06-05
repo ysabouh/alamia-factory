@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -35,8 +37,9 @@ type HallTone = "injection" | "blow" | "packaging" | "maintenance";
 type HallId = "inj-1" | "inj-2" | "blow" | "packaging" | "maintenance";
 type Hall = { id: HallId; name: string; typeLabel: string; tone: HallTone; machines: MachineSnapshot[] };
 
-const typeLabel: Record<MachineSnapshot["type"], string> = {
+const typeLabel: Record<string, string> = {
   injection: "حقن بلاستيك",
+  blow: "نفخ",
   blow_molding: "نفخ",
   line: "خط إنتاج"
 };
@@ -72,7 +75,7 @@ export function MachinesFloorPage({ dashboard }: { dashboard: LiveDashboard }) {
   const halls = useMemo<Hall[]>(() => {
     const injection = filtered.filter((m) => m.type === "injection");
     const lines = filtered.filter((m) => m.type === "line");
-    const blow = filtered.filter((m) => m.type === "blow_molding");
+    const blow = filtered.filter((m) => m.type === "blow" || m.type === "blow_molding");
     return [
       { id: "inj-1", name: "Injection Hall 1", typeLabel: "حقن عالي الضغط", tone: "injection", machines: injection.filter((_, i) => i % 2 === 0).concat(lines.filter((_, i) => i % 2 === 0)) },
       { id: "inj-2", name: "Injection Hall 2", typeLabel: "خلايا قوالب دقيقة", tone: "injection", machines: injection.filter((_, i) => i % 2 !== 0).concat(lines.filter((_, i) => i % 2 !== 0)) },
@@ -101,9 +104,14 @@ export function MachinesFloorPage({ dashboard }: { dashboard: LiveDashboard }) {
             <p className="text-xs tracking-[0.2em] text-muted-foreground">SMART FACTORY FLOOR OS</p>
             <h1 className="mt-2 text-2xl font-semibold md:text-3xl">منصة إدارة أرضية المصنع الذكية</h1>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-700 dark:text-emerald-300">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 pulse-live" />
-            المصنع في وضع تشغيل نشط
+          <div className="inline-flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={"/ar/machines/registry" as Route}>سجل الماكينات</Link>
+            </Button>
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-700 dark:text-emerald-300">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 pulse-live" />
+              المصنع في وضع تشغيل نشط
+            </div>
           </div>
         </div>
 
@@ -115,9 +123,9 @@ export function MachinesFloorPage({ dashboard }: { dashboard: LiveDashboard }) {
           <select className="h-10 rounded-lg border border-input bg-background px-3 text-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "all" | MachineSnapshot["status"])}>
             <option value="all">كل الحالات</option>
             <option value="running">تشغيل</option>
-            <option value="idle">توقف</option>
+            <option value="stopped">توقف</option>
             <option value="maintenance">صيانة</option>
-            <option value="down">عطل</option>
+            <option value="breakdown">عطل</option>
           </select>
           <select className="h-10 rounded-lg border border-input bg-background px-3 text-sm" value={hallFilter} onChange={(e) => setHallFilter(e.target.value as "all" | HallId)}>
             <option value="all">كل القاعات</option>
@@ -177,7 +185,7 @@ function HallSection({
   setExpandedMachine: (value: number | null) => void;
 }) {
   const running = hall.machines.filter((m) => m.status === "running").length;
-  const health = Math.max(32, avgEfficiency(hall.machines) - hall.machines.filter((m) => m.status === "down").length * 12);
+  const health = Math.max(32, avgEfficiency(hall.machines) - hall.machines.filter((m) => m.status === "breakdown").length * 12);
 
   return (
     <section className={`rounded-3xl border p-4 md:p-5 ${hallStyles[hall.tone]}`}>
@@ -412,10 +420,10 @@ function Metric({ label, value, icon }: { label: string; value: string; icon: Re
   );
 }
 
-function MachineStatus({ status }: { status: MachineSnapshot["status"] }) {
+function MachineStatus({ status }: { status: MachineSnapshot["status"] | string }) {
   if (status === "running") return <Badge variant="success">تشغيل</Badge>;
   if (status === "maintenance") return <Badge variant="warning">صيانة</Badge>;
-  if (status === "down") return <Badge variant="destructive">عطل</Badge>;
+  if (status === "breakdown") return <Badge variant="destructive">عطل</Badge>;
   return <Badge variant="secondary">متوقفة</Badge>;
 }
 

@@ -21,6 +21,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->job(new \App\Jobs\MarkAbsentEmployeesJob)->dailyAt('01:00');
     })
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->redirectGuestsTo(function (Request $request): ?string {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return null;
+            }
+
+            return null;
+        });
+
         $middleware->api(prepend: [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             \App\Http\Middleware\SetApiLocale::class,

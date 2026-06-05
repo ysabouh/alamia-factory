@@ -38,7 +38,12 @@ function LoginForm() {
       router.replace(nextPath as Route);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "فشل تسجيل الدخول");
+      const msg = err instanceof Error ? err.message : "فشل تسجيل الدخول";
+      const hint =
+        msg.includes("غير صحيحة") || msg.includes("incorrect")
+          ? " تأكد من: admin@myfactory.local و Admin@2026 (حرف A كبير و @2026). إن استمر الخطأ شغّل: php artisan factory:ensure-superadmin"
+          : "";
+      setError(msg + hint);
     } finally {
       setBusy(false);
     }

@@ -25,10 +25,10 @@ class WasteEntry extends Model
 
     protected function casts(): array
     {
-        return array_merge(self::auditorDateCasts(), [
+        return [
             'entry_date' => 'date',
             'weight_kg' => 'decimal:3',
-        ]);
+        ];
     }
 
     public function machine(): BelongsTo

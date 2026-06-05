@@ -26,7 +26,7 @@ class ProductionWorkflowTest extends TestCase
             'machine_type_id' => $machineType->id,
             'code' => 'INJ-01',
             'name' => 'حقن 350 طن',
-            'status' => 'idle',
+            'status' => 'stopped',
         ]);
         $product = Product::create(['code' => 'P-001', 'name' => 'غطاء', 'unit' => 'piece']);
         $mold = Mold::create(['product_id' => $product->id, 'code' => 'M-001', 'name' => 'قالب غطاء']);

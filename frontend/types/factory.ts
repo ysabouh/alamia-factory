@@ -1,10 +1,10 @@
-export type MachineStatus = "running" | "idle" | "maintenance" | "down";
+export type MachineStatus = "running" | "stopped" | "maintenance" | "breakdown";
 
 export interface MachineSnapshot {
   id: number;
   code: string;
   name: string;
-  type: "injection" | "blow_molding" | "line";
+  type: "injection" | "blow" | "blow_molding" | "line";
   status: MachineStatus;
   currentMold: string | null;
   operator: string | null;

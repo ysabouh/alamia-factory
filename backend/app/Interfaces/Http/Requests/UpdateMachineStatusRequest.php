@@ -14,7 +14,7 @@ class UpdateMachineStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['required', 'in:running,idle,maintenance,down'],
+            'status' => ['required', 'in:running,stopped,maintenance,breakdown'],
             'status_note' => ['nullable', 'string', 'max:255'],
         ];
     }

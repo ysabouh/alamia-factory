@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\Factory\Models\Employee;
 use App\Domain\Factory\Models\User;
 use Illuminate\Console\Command;
 use Spatie\Permission\Models\Permission;
@@ -23,10 +24,24 @@ class EnsureSuperAdminCommand extends Command
 
         $permissions = [
             'machines.view',
+            'machines.manage',
             'machines.update_status',
+            'machines.record_counters',
+            'machines.manage_maintenance',
+            'molds.view',
+            'molds.manage',
+            'molds.manage_maintenance',
+            'products.view',
+            'products.manage',
+            'assembly.view',
+            'assembly.manage',
             'production.record',
+            'production.manage',
+            'production.execute',
             'production.approve',
             'production.reports',
+            'quality.inspect',
+            'quality.manage_checklists',
             'maintenance.open_ticket',
             'maintenance.close_ticket',
             'inventory.view',
@@ -61,14 +76,25 @@ class EnsureSuperAdminCommand extends Command
         $role = Role::findOrCreate($roleName, $guard);
         $role->syncPermissions(Permission::query()->where('guard_name', $guard)->get());
 
-        $user = User::updateOrCreate(
-            ['email' => $email],
-            [
-                'name' => $name,
-                'password' => $password,
-                'is_active' => true,
-            ]
+        Role::findOrCreate('supervisor', $guard)->givePermissionTo([
+            'production.manage',
+            'production.execute',
+            'quality.inspect',
+            'quality.manage_checklists',
+        ]);
+
+        $employee = Employee::query()->firstOrCreate(
+            ['code' => 'EMP-001'],
+            ['name' => $name, 'job_title' => 'مسؤول النظام', 'department' => 'تقنية المعلومات', 'is_active' => true]
         );
+
+        $user = User::query()->firstOrNew(['email' => $email]);
+        $user->name = $name;
+        $user->employee_id = $employee->id;
+        $user->is_active = true;
+        // cast «hashed» على User — يُخزّن bcrypt من النص الصريح في كل تشغيل
+        $user->password = $password;
+        $user->save();
 
         $user->syncRoles([$roleName]);
 

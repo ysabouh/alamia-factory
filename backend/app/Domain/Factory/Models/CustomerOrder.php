@@ -22,10 +22,10 @@ class CustomerOrder extends Model
 
     protected function casts(): array
     {
-        return array_merge(self::auditorDateCasts(), [
+        return [
             'ordered_at' => 'date',
             'due_date' => 'date',
-        ]);
+        ];
     }
 
     public function customer(): BelongsTo

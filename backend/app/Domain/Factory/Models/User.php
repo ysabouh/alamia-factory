@@ -44,11 +44,11 @@ class User extends Authenticatable
 
     protected function casts(): array
     {
-        return array_merge(self::auditorDateCasts(), [
+        return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
-        ]);
+        ];
     }
 
     public function employee(): BelongsTo

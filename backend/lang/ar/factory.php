@@ -8,6 +8,7 @@ return [
     'user_unlinked_success' => 'تم إلغاء ربط الحساب بالموظف.',
     'account_updated_success' => 'تم تحديث حساب النظام بنجاح.',
     'invalid_credentials' => 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+    'account_inactive' => 'هذا الحساب معطّل. تواصل مع مسؤول النظام.',
     'logged_out' => 'تم تسجيل الخروج بنجاح.',
     'role_not_found' => 'الدور المحدد غير موجود في النظام.',
     'permission_not_found' => 'الصلاحية المحددة غير موجودة في النظام.',

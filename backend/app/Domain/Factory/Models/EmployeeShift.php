@@ -20,11 +20,11 @@ class EmployeeShift extends Model
 
     protected function casts(): array
     {
-        return array_merge(self::auditorDateCasts(), [
+        return [
             'effective_from' => 'date',
             'effective_to' => 'date',
             'is_active' => 'boolean',
-        ]);
+        ];
     }
 
     public function employee(): BelongsTo

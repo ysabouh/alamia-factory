@@ -5,7 +5,7 @@ namespace App\Domain\Factory\Enums;
 enum MachineStatus: string
 {
     case Running = 'running';
-    case Idle = 'idle';
+    case Stopped = 'stopped';
     case Maintenance = 'maintenance';
-    case Down = 'down';
+    case Breakdown = 'breakdown';
 }

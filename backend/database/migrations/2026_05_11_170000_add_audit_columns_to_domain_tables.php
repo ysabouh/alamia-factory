@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -89,36 +88,7 @@ return new class extends Migration
                 if (! Schema::hasColumn($table, 'updated_by')) {
                     $blueprint->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
                 }
-                if (! Schema::hasColumn($table, 'created_date')) {
-                    $blueprint->timestamp('created_date')->nullable();
-                }
-                if (! Schema::hasColumn($table, 'updated_date')) {
-                    $blueprint->timestamp('updated_date')->nullable();
-                }
             });
-        }
-
-        $backfill = [
-            'employees', 'users', 'machines', 'products', 'molds', 'shifts', 'work_orders',
-            'machine_assignments', 'production_entries', 'waste_entries', 'mold_machine_settings',
-            'maintenance_tickets', 'maintenance_actions', 'warehouses', 'storage_locations',
-            'materials', 'stock_levels', 'inventory_transactions', 'customers', 'customer_orders',
-            'customer_order_items', 'quality_inspections', 'quality_defects', 'alerts',
-            'material_lots', 'work_order_material_consumption', 'preventive_maintenance_plans',
-            'preventive_maintenance_logs', 'order_status_history', 'activity_logs', 'attachments',
-            'halls', 'departments', 'job_roles', 'employment_statuses',
-        ];
-        foreach ($backfill as $table) {
-            if (! Schema::hasTable($table)) {
-                continue;
-            }
-            if (! Schema::hasColumn($table, 'created_at') || ! Schema::hasColumn($table, 'created_date')) {
-                continue;
-            }
-            DB::table($table)->whereNull('created_date')->update([
-                'created_date' => DB::raw('`created_at`'),
-                'updated_date' => DB::raw('`updated_at`'),
-            ]);
         }
     }
 
@@ -142,7 +112,7 @@ return new class extends Migration
                 if (Schema::hasColumn($table, 'created_by')) {
                     $blueprint->dropForeign(['created_by']);
                 }
-                foreach (['updated_by', 'created_date', 'updated_date'] as $col) {
+                foreach (['updated_by'] as $col) {
                     if (Schema::hasColumn($table, $col)) {
                         $blueprint->dropColumn($col);
                     }

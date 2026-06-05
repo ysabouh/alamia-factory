@@ -20,9 +20,9 @@ class Alert extends Model
 
     protected function casts(): array
     {
-        return array_merge(self::auditorDateCasts(), [
+        return [
             'resolved_at' => 'datetime',
-        ]);
+        ];
     }
 
     public function alertable(): MorphTo

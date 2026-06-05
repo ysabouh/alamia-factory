@@ -19,9 +19,9 @@ class Warehouse extends Model
 
     protected function casts(): array
     {
-        return array_merge(self::auditorDateCasts(), [
+        return [
             'is_active' => 'boolean',
-        ]);
+        ];
     }
 
     public function locations(): HasMany

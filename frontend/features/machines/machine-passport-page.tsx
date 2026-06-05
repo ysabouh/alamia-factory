@@ -117,7 +117,7 @@ export function MachinePassportPage({ machine }: PassportProps) {
             <div className="grid gap-3 sm:grid-cols-3">
               <ScoreCard label="الصحة" value={`${healthScore}%`} tone={statusTone} />
               <ScoreCard label="الكفاءة" value={`${efficiency}%`} tone="good" />
-              <ScoreCard label="الحالة" value={machine.status === "running" ? "تشغيل" : machine.status === "maintenance" ? "صيانة" : machine.status === "idle" ? "توقف" : "حرج"} tone={statusTone} />
+              <ScoreCard label="الحالة" value={machine.status === "running" ? "تشغيل" : machine.status === "maintenance" ? "صيانة" : machine.status === "stopped" ? "توقف" : "حرج"} tone={statusTone} />
             </div>
           </div>
 

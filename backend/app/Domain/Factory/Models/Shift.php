@@ -26,14 +26,14 @@ class Shift extends Model
 
     protected function casts(): array
     {
-        return array_merge(self::auditorDateCasts(), [
+        return [
             'starts_at' => 'datetime:H:i',
             'ends_at' => 'datetime:H:i',
             'break_minutes' => 'integer',
             'overtime_multiplier' => 'decimal:2',
             'friday_multiplier' => 'decimal:2',
             'is_active' => 'boolean',
-        ]);
+        ];
     }
 
     public function employeeShifts(): HasMany
