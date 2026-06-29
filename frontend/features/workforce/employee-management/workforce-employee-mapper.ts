@@ -13,6 +13,7 @@ import type {
   FullEmployeeEditInput,
   ManagedEmployee
 } from "./model";
+import { isGeneralManagerJobRole } from "./model";
 
 function asRecord(v: unknown): Record<string, unknown> | null {
   return v !== null && typeof v === "object" ? (v as Record<string, unknown>) : null;
@@ -123,6 +124,10 @@ export function parseApiEmployeeDetail(raw: unknown): ApiEmployeeDetailJson | nu
     address: str(o.address),
     hallId: str(o.hallId),
     departmentId: str(o.departmentId),
+    orgPositionId: str(o.orgPositionId),
+    orgPositionName: str(asRecord(o.orgPosition)?.name ?? o.orgPositionName),
+    reportsToId: str(o.reportsToId),
+    managerName: str(o.managerName),
     jobRoleId: str(o.jobRoleId),
     shiftId: str(o.shiftId),
     employeeStatusId: str(o.employeeStatusId),
@@ -143,7 +148,17 @@ export function parseApiEmployeeDetail(raw: unknown): ApiEmployeeDetailJson | nu
     department,
     jobRole,
     shift,
-    status
+    status,
+    certifications: Array.isArray(o.certifications)
+      ? (o.certifications as Record<string, unknown>[]).map((c) => ({
+          id: str(c.id) ?? "",
+          name: str(c.name) ?? "",
+          issuer: str(c.issuer),
+          issuedAt: str(c.issuedAt),
+          expiresAt: str(c.expiresAt)
+        }))
+      : [],
+    systemUser
   };
 }
 
@@ -270,6 +285,7 @@ export function managedEmployeeFromApi(row: ApiEmployeeDetailJson): ManagedEmplo
     salaryUsd: row.basicSalaryUsd,
     hireDate: row.hireDate || fromHire,
     photoUrl: row.profileImage?.trim() ? row.profileImage : null,
+    managerName: row.managerName ?? null,
     notes: row.notes ?? "",
     status: uiStatusFromApi(row),
     performanceScore: Math.round(row.performanceScore),
@@ -279,6 +295,7 @@ export function managedEmployeeFromApi(row: ApiEmployeeDetailJson): ManagedEmplo
     bonusPoints: Math.round(row.performanceScore * 3),
     violations: 0,
     annualLeaveBalance: row.annualLeaveBalance,
+    certifications: row.certifications ?? [],
     assignedMachines: [],
     shiftHistory: [{ id: `h-${row.id}`, label: shiftLabel, from: fromHire, to: "مستمر" }],
     rewards: [],
@@ -288,6 +305,9 @@ export function managedEmployeeFromApi(row: ApiEmployeeDetailJson): ManagedEmplo
     attendanceAbsentDays: 0,
     hallId: row.hallId,
     departmentId: row.departmentId,
+    orgPositionId: row.orgPositionId ?? null,
+    orgPositionName: row.orgPositionName ?? row.orgPosition?.name ?? null,
+    reportsToId: row.reportsToId,
     jobRoleId: row.jobRoleId,
     shiftId: row.shiftId,
     employeeStatusId: row.employeeStatusId,
@@ -297,8 +317,8 @@ export function managedEmployeeFromApi(row: ApiEmployeeDetailJson): ManagedEmplo
 }
 
 export function defaultCurrencyId(catalog: WorkforceCatalogJson): string {
-  const preferred = catalog.currencies.find((c) => c.code === "SYP") ?? catalog.currencies.find((c) => !c.isBase);
-  return preferred?.id ?? catalog.currencies[0]?.id ?? "";
+  const usd = catalog.currencies.find((c) => c.code === "USD");
+  return usd?.id ?? catalog.currencies.find((c) => c.isBase)?.id ?? catalog.currencies[0]?.id ?? "";
 }
 
 export function normalizeWorkforceCatalog(raw: {
@@ -377,6 +397,10 @@ export function createPayloadFromForm(
     hireDate: data.hireDate,
     ...(data.hallId?.trim() ? { hallId: data.hallId.trim() } : {}),
     ...(data.departmentId?.trim() ? { departmentId: data.departmentId.trim() } : {}),
+    ...(data.orgPositionId?.trim() ? { orgPositionId: data.orgPositionId.trim() } : {}),
+    ...(isGeneralManagerJobRole(data.jobRoleId, catalog)
+      ? {}
+      : { reportsToId: data.reportsToId.trim() }),
     ...(data.jobRoleId?.trim() ? { jobRoleId: data.jobRoleId.trim() } : {}),
     ...(data.shiftId?.trim() ? { shiftId: data.shiftId.trim() } : {}),
     basicSalary: data.salary,
@@ -406,6 +430,8 @@ export function patchPayloadFromFullEdit(
     hireDate: data.hireDate,
     hallId: data.hallId?.trim() ?? "",
     departmentId: data.departmentId?.trim() ?? "",
+    orgPositionId: data.orgPositionId?.trim() || null,
+    reportsToId: isGeneralManagerJobRole(data.jobRoleId, catalog) ? null : data.reportsToId?.trim() || null,
     jobRoleId: data.jobRoleId?.trim() ?? "",
     shiftId: data.shiftId?.trim() ?? "",
     basicSalary: data.salary,

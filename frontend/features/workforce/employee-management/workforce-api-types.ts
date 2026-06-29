@@ -41,6 +41,11 @@ export type ApiEmployeeDetailJson = {
   address: string | null;
   hallId: string | null;
   departmentId: string | null;
+  orgPositionId?: string | null;
+  orgPositionName?: string | null;
+  orgPosition?: { id: string; name: string; code: string } | null;
+  reportsToId: string | null;
+  managerName: string | null;
   jobRoleId: string | null;
   shiftId: string | null;
   employeeStatusId: string | null;
@@ -62,6 +67,14 @@ export type ApiEmployeeDetailJson = {
   jobRole: WorkforceJobRoleJson | null;
   shift: WorkforceShiftJson | null;
   status: WorkforceRefJson | null;
+  certifications?: {
+    id: string;
+    name: string;
+    issuer?: string | null;
+    issuedAt?: string | null;
+    expiresAt?: string | null;
+    certificateNumber?: string | null;
+  }[];
   systemUser?: {
     id: number;
     email: string;

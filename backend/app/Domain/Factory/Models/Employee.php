@@ -30,6 +30,8 @@ class Employee extends Model
         'hire_date',
         'hall_id',
         'department_id',
+        'org_position_id',
+        'reports_to_id',
         'job_role_id',
         'shift_id',
         'employment_status_id',
@@ -81,6 +83,31 @@ class Employee extends Model
     public function organizationalDepartment(): BelongsTo
     {
         return $this->belongsTo(Department::class, 'department_id');
+    }
+
+    public function orgPosition(): BelongsTo
+    {
+        return $this->belongsTo(DepartmentOrgPosition::class, 'org_position_id');
+    }
+
+    public function reportsTo(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'reports_to_id');
+    }
+
+    public function directReports(): HasMany
+    {
+        return $this->hasMany(Employee::class, 'reports_to_id');
+    }
+
+    public function certifications(): HasMany
+    {
+        return $this->hasMany(EmployeeCertification::class);
+    }
+
+    public function workOrderAssignments(): HasMany
+    {
+        return $this->hasMany(WorkOrderWorker::class);
     }
 
     public function jobRole(): BelongsTo

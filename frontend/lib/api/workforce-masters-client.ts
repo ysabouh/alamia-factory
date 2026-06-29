@@ -29,7 +29,14 @@ export type DepartmentMaster = {
   hallId: string | null;
   hallName?: string | null;
   hallCode?: string | null;
+  parentId?: string | null;
+  parentName?: string | null;
+  parentCode?: string | null;
+  isLeaf?: boolean;
   description: string | null;
+  vacancyCount?: number;
+  managerId?: string | null;
+  managerName?: string | null;
   isActive: boolean;
 };
 
@@ -153,5 +160,42 @@ export const workforceMastersApi = {
   listHallsForSelect: async () => {
     const res = await workforceMastersApi.list<HallMaster>("halls", { pageSize: 100, isActive: true });
     return res.data;
+  },
+
+  getDepartmentTree: async () => {
+    const raw = await request<{ data: import("@/features/workforce/employee-management/org-chart/org-chart-types").DepartmentTreeNode[] }>(
+      "/workforce/masters/departments/tree"
+    );
+    return raw.data;
+  },
+
+  listOrgPositions: async (departmentId: string) => {
+    const raw = await request<{
+      data: import("@/features/workforce/employee-management/org-chart/org-chart-types").DepartmentOrgPositionJson[];
+      meta: { isLeaf: boolean };
+    }>(`/workforce/masters/departments/${encodeURIComponent(departmentId)}/org-positions`);
+    return raw;
+  },
+
+  createOrgPosition: async (departmentId: string, body: Record<string, unknown>) => {
+    const raw = await request<{ data: import("@/features/workforce/employee-management/org-chart/org-chart-types").DepartmentOrgPositionJson }>(
+      `/workforce/masters/departments/${encodeURIComponent(departmentId)}/org-positions`,
+      { method: "POST", body: JSON.stringify(body) }
+    );
+    return unwrapData(raw);
+  },
+
+  updateOrgPosition: async (departmentId: string, positionId: string, body: Record<string, unknown>) => {
+    const raw = await request<{ data: import("@/features/workforce/employee-management/org-chart/org-chart-types").DepartmentOrgPositionJson }>(
+      `/workforce/masters/departments/${encodeURIComponent(departmentId)}/org-positions/${encodeURIComponent(positionId)}`,
+      { method: "PATCH", body: JSON.stringify(body) }
+    );
+    return unwrapData(raw);
+  },
+
+  deleteOrgPosition: async (departmentId: string, positionId: string) => {
+    await request(`/workforce/masters/departments/${encodeURIComponent(departmentId)}/org-positions/${encodeURIComponent(positionId)}`, {
+      method: "DELETE"
+    });
   }
 };

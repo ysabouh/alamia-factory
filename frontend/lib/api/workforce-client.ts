@@ -102,5 +102,64 @@ export const workforceApi = {
   loadCatalog: async () => {
     const res = await requestJson<unknown>("/workforce/meta");
     return rawCatalogFromWorkforceMetaResponse(res);
-  }
+  },
+
+  getOrgChart: () => requestJson<{ data: import("@/features/workforce/employee-management/org-chart/org-chart-types").OrgChartData }>("/workforce/org-chart"),
+
+  getOrgChartLayout: () =>
+    requestJson<{ data: import("@/features/workforce/employee-management/org-chart/org-chart-settings-types").OrgChartLayoutPayload }>(
+      "/workforce/org-chart/settings"
+    ),
+
+  updateOrgChartSettings: (body: Partial<import("@/features/workforce/employee-management/org-chart/org-chart-settings-types").OrgChartLayoutSettings>) =>
+    requestJson<{ data: import("@/features/workforce/employee-management/org-chart/org-chart-settings-types").OrgChartLayoutPayload }>(
+      "/workforce/org-chart/settings",
+      { method: "PATCH", body: JSON.stringify(body) }
+    ),
+
+  updateOrgChartPositions: (positions: Record<string, { x: number; y: number }>) =>
+    requestJson<{ data: import("@/features/workforce/employee-management/org-chart/org-chart-settings-types").OrgChartLayoutPayload }>(
+      "/workforce/org-chart/positions",
+      { method: "PATCH", body: JSON.stringify({ positions }) }
+    ),
+
+  resetOrgChartPositions: () =>
+    requestJson<{ data: import("@/features/workforce/employee-management/org-chart/org-chart-settings-types").OrgChartLayoutPayload }>(
+      "/workforce/org-chart/positions/reset",
+      { method: "POST" }
+    ),
+
+  updateReporting: (employeeId: string, body: { reportsToId?: string | null; departmentId?: string | null; orgPositionId?: string | null }) =>
+    requestJson<{ data: { id: string; reportsToId: string | null; departmentId: string | null; orgPositionId?: string | null } }>(
+      `/workforce/employees/${encodeURIComponent(employeeId)}/reporting`,
+      { method: "PATCH", body: JSON.stringify(body) }
+    ),
+
+  getFactoryOrgSettings: () =>
+    requestJson<{ data: import("@/features/workforce/employee-management/org-chart/org-chart-types").FactoryOrgSettings }>(
+      "/workforce/org-chart/factory-settings"
+    ),
+
+  updateFactoryOrgSettings: (body: Partial<import("@/features/workforce/employee-management/org-chart/org-chart-types").FactoryOrgSettings>) =>
+    requestJson<{ data: import("@/features/workforce/employee-management/org-chart/org-chart-types").FactoryOrgSettings }>(
+      "/workforce/org-chart/factory-settings",
+      { method: "PATCH", body: JSON.stringify(body) }
+    ),
+
+  listCertifications: (employeeId: string) =>
+    requestJson<{ data: import("@/features/workforce/employee-management/org-chart/org-chart-types").EmployeeCertificationJson[] }>(
+      `/workforce/employees/${encodeURIComponent(employeeId)}/certifications`
+    ),
+
+  addCertification: (employeeId: string, body: Record<string, unknown>) =>
+    requestJson<{ data: import("@/features/workforce/employee-management/org-chart/org-chart-types").EmployeeCertificationJson }>(
+      `/workforce/employees/${encodeURIComponent(employeeId)}/certifications`,
+      { method: "POST", body: JSON.stringify(body) }
+    ),
+
+  deleteCertification: (employeeId: string, certId: string) =>
+    requestJson<{ deleted: boolean }>(
+      `/workforce/employees/${encodeURIComponent(employeeId)}/certifications/${encodeURIComponent(certId)}`,
+      { method: "DELETE" }
+    )
 };

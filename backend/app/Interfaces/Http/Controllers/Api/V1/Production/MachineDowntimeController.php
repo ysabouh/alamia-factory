@@ -2,8 +2,10 @@
 
 namespace App\Interfaces\Http\Controllers\Api\V1\Production;
 
+use App\Application\Production\MachineDowntimePhotoService;
 use App\Application\Production\MachineDowntimeService;
 use App\Domain\Factory\Models\MachineDowntime;
+use App\Domain\Factory\Models\MachineDowntimePhoto;
 use App\Domain\Factory\Models\WorkOrder;
 use App\Interfaces\Http\Support\SerializesQuality;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +19,7 @@ class MachineDowntimeController
 
     public function __construct(
         private readonly MachineDowntimeService $downtimes,
+        private readonly MachineDowntimePhotoService $photos,
     ) {}
 
     public function reasons(): JsonResponse
@@ -51,20 +54,53 @@ class MachineDowntimeController
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return response()->json(['data' => $this->serializeDowntime($downtime->load(['reason', 'maintenanceTicket']))], 201);
+        return response()->json(['data' => $this->serializeDowntime($downtime->load(['reason', 'maintenanceTicket', 'photos']))], 201);
     }
 
     public function update(Request $request, MachineDowntime $machineDowntime): JsonResponse
     {
         $data = $request->validate([
+            'downtimeReasonId' => ['nullable', 'integer', 'exists:downtime_reasons,id'],
+            'startTime' => ['nullable', 'date'],
             'endTime' => ['nullable', 'date'],
             'downtimeMinutes' => ['nullable', 'integer', 'min:0'],
             'notes' => ['nullable', 'string'],
+            'faultDescription' => ['nullable', 'string'],
+            'repairMethod' => ['nullable', 'string'],
         ]);
 
         $downtime = $this->downtimes->update($machineDowntime, $data);
 
         return response()->json(['data' => $this->serializeDowntime($downtime)]);
+    }
+
+    public function storePhoto(Request $request, MachineDowntime $machineDowntime): JsonResponse
+    {
+        $request->validate([
+            'photo' => ['required', 'file', 'image', 'max:10240'],
+        ]);
+
+        $photo = $this->photos->upload($machineDowntime, $request->file('photo'));
+
+        return response()->json(['data' => $this->serializeDowntimePhoto($photo)], 201);
+    }
+
+    public function updatePhoto(Request $request, MachineDowntimePhoto $machineDowntimePhoto): JsonResponse
+    {
+        $request->validate([
+            'photo' => ['required', 'file', 'image', 'max:10240'],
+        ]);
+
+        $photo = $this->photos->replace($machineDowntimePhoto, $request->file('photo'));
+
+        return response()->json(['data' => $this->serializeDowntimePhoto($photo)]);
+    }
+
+    public function destroyPhoto(MachineDowntimePhoto $machineDowntimePhoto): JsonResponse
+    {
+        $this->photos->delete($machineDowntimePhoto);
+
+        return response()->json(['deleted' => true]);
     }
 
     public function maintenanceRequest(Request $request, MachineDowntime $machineDowntime): JsonResponse

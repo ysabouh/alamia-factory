@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +28,7 @@ export function ProductionOrderFormWorkspace() {
   const [moldId, setMoldId] = useState("");
   const [shiftId, setShiftId] = useState("");
   const [supervisorId, setSupervisorId] = useState("");
+  const [productionManagerId, setProductionManagerId] = useState("");
   const [plannedQuantity, setPlannedQuantity] = useState("1000");
   const [notes, setNotes] = useState("");
 
@@ -77,6 +80,7 @@ export function ProductionOrderFormWorkspace() {
       moldId,
       shiftId,
       supervisorId,
+      productionManagerId,
       plannedQuantity,
       notes
     });
@@ -96,6 +100,7 @@ export function ProductionOrderFormWorkspace() {
         moldId: parsed.data.moldId || undefined,
         shiftId: parsed.data.shiftId || undefined,
         supervisorId: parsed.data.supervisorId || undefined,
+        productionManagerId: parsed.data.productionManagerId || undefined,
         plannedQuantity: parsed.data.plannedQuantity,
         notes: parsed.data.notes || undefined,
         workers: workerPayload.length ? workerPayload : undefined
@@ -110,9 +115,17 @@ export function ProductionOrderFormWorkspace() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <Link
+        href="/ar/production/orders"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
+      >
+        <ArrowRight className="h-4 w-4 translate-y-0.5" />
+        العودة إلى سجل الأوامر
+      </Link>
+
       <div>
         <h1 className="text-2xl font-semibold">إنشاء أمر إنتاج</h1>
-        <p className="text-sm text-muted-foreground">مدير الإنتاج</p>
+        <p className="text-sm text-muted-foreground">تعيين المنتج، الماكينة، والفريق</p>
       </div>
 
       {error ? <p className="text-destructive">{error}</p> : null}
@@ -171,6 +184,16 @@ export function ProductionOrderFormWorkspace() {
           <WfmField label="المشرف">
             <WfmSelect value={supervisorId} onChange={(e) => setSupervisorId(e.target.value)}>
               <option value="">—</option>
+              {employees.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name}
+                </option>
+              ))}
+            </WfmSelect>
+          </WfmField>
+          <WfmField label="مدير الإنتاج">
+            <WfmSelect value={productionManagerId} onChange={(e) => setProductionManagerId(e.target.value)}>
+              <option value="">— اختر مدير الإنتاج —</option>
               {employees.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.name}

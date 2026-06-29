@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { Route } from "next";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -15,6 +16,7 @@ import {
   ChevronRight,
   Clock,
   Eye,
+  Network,
   Pencil,
   Plus,
   RotateCcw,
@@ -49,14 +51,33 @@ import { useFactoryAuth } from "@/contexts/factory-auth-context";
 import { useEmployeeRegistry } from "./employee-registry-context";
 import { ManagedEmployeeDetail } from "./managed-employee-detail";
 import type { EmployeeEmploymentStatus, ManagedEmployee } from "./model";
-import { AttendanceStatusIcon, EmploymentStatusIcon, RegistryIconButton } from "./employee-registry-icons";
+import { EmploymentStatusIcon, RegistryIconButton } from "./employee-registry-icons";
 import {
   mapUiSortKeyToApi,
   patchForEmploymentStatus,
   type DashboardEmployeeSortKey
 } from "./workforce-employee-mapper";
+import "./org-chart/org-chart-print.css";
+
+const OrgChartWorkspace = dynamic(
+  () => import("./org-chart/org-chart-workspace").then((m) => ({ default: m.OrgChartWorkspace })),
+  {
+    ssr: false,
+    loading: () => <p className="py-12 text-center text-atlas-muted">جاري تحميل الهيكل التنظيمي…</p>
+  }
+);
+
+const FactoryOrgWorkspace = dynamic(
+  () => import("./factory-org-workspace").then((m) => ({ default: m.FactoryOrgWorkspace })),
+  {
+    ssr: false,
+    loading: () => <p className="py-12 text-center text-atlas-muted">جاري تحميل هيكل المصنع…</p>
+  }
+);
 
 const PAGE_SIZE = 20;
+
+type EmployeesViewTab = "registry" | "org-chart" | "factory-org";
 
 const rowCheckboxClass =
   "size-4 shrink-0 cursor-pointer rounded border-atlas-rule bg-atlas-paper text-atlas-brand accent-atlas-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-atlas-brand/35 disabled:cursor-not-allowed disabled:opacity-50";
@@ -70,8 +91,6 @@ type SortKey = keyof Pick<
   | "hall"
   | "shift"
   | "status"
-  | "performanceScore"
-  | "attendanceStatus"
 >;
 
 function employmentTone(s: ManagedEmployee["status"]): WfmBadgeTone {
@@ -79,13 +98,6 @@ function employmentTone(s: ManagedEmployee["status"]): WfmBadgeTone {
   if (s === "probation") return "warning";
   if (s === "suspended") return "danger";
   return "neutral";
-}
-
-function attendanceTone(a: ManagedEmployee["attendanceStatus"]): WfmBadgeTone {
-  if (a === "present") return "active";
-  if (a === "late") return "warning";
-  if (a === "absent") return "danger";
-  return "info";
 }
 
 export function EmployeeListWorkspace() {
@@ -112,8 +124,8 @@ export function EmployeeListWorkspace() {
   const [shift, setShift] = useState("all");
   const [role, setRole] = useState("all");
   const [status, setStatus] = useState<"all" | EmployeeEmploymentStatus>("all");
-  const [sortKey, setSortKey] = useState<SortKey>("performanceScore");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortKey, setSortKey] = useState<SortKey>("fullName");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [drawerId, setDrawerId] = useState<string | null>(null);
@@ -122,6 +134,7 @@ export function EmployeeListWorkspace() {
   const [deleteBusy, setDeleteBusy] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkActionError, setBulkActionError] = useState<string | null>(null);
+  const [viewTab, setViewTab] = useState<EmployeesViewTab>("registry");
 
   useEffect(() => {
     if (!catalog) return;
@@ -281,12 +294,12 @@ export function EmployeeListWorkspace() {
             </p>
           </div>
           {canManageEmployees ? (
-            <Link href={"/ar/workforce/employees/new" as Route}>
-              <Button type="button" variant="atlasPrimary" className="rounded-sm gap-2">
+            <Button asChild type="button" variant="atlasPrimary" className="rounded-sm gap-2">
+              <Link href={"/ar/workforce/employees/new" as Route}>
                 <Plus className="h-4 w-4" />
                 إضافة موظف
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           ) : (
             <Button type="button" variant="atlasOutline" className="rounded-sm opacity-60" disabled title="تتطلب صلاحية workforce.manage_employees">
               <Plus className="h-4 w-4" />
@@ -296,6 +309,57 @@ export function EmployeeListWorkspace() {
         </div>
       </header>
 
+      <div className="flex flex-wrap gap-1 rounded-sm border border-atlas-rule bg-atlas-paper p-1">
+        <button
+          type="button"
+          onClick={() => setViewTab("registry")}
+          className={cn(
+            "flex items-center gap-2 rounded-sm px-4 py-2 text-sm transition-colors",
+            viewTab === "registry"
+              ? "bg-atlas-brand/15 font-medium text-atlas-brand"
+              : "text-atlas-muted hover:bg-atlas-surface hover:text-atlas-ink"
+          )}
+        >
+          <Users className="h-4 w-4" />
+          سجل العاملين
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewTab("factory-org")}
+          className={cn(
+            "flex items-center gap-2 rounded-sm px-4 py-2 text-sm transition-colors",
+            viewTab === "factory-org"
+              ? "bg-atlas-brand/15 font-medium text-atlas-brand"
+              : "text-atlas-muted hover:bg-atlas-surface hover:text-atlas-ink"
+          )}
+        >
+          <Building2 className="h-4 w-4" />
+          هيكل المصنع
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewTab("org-chart")}
+          className={cn(
+            "flex items-center gap-2 rounded-sm px-4 py-2 text-sm transition-colors",
+            viewTab === "org-chart"
+              ? "bg-atlas-brand/15 font-medium text-atlas-brand"
+              : "text-atlas-muted hover:bg-atlas-surface hover:text-atlas-ink"
+          )}
+        >
+          <Network className="h-4 w-4" />
+          الهيكل التنظيمي
+        </button>
+      </div>
+
+      {viewTab === "factory-org" ? (
+        <FactoryOrgWorkspace
+          canManage={can("workforce.manage_masters")}
+          canAssignEmployees={canManageEmployees}
+        />
+      ) : viewTab === "org-chart" ? (
+        <OrgChartWorkspace canManage={canManageEmployees} />
+      ) : (
+        <>
       {listSource === "dashboard" ? (
         <div className="rounded-lg border border-atlas-warning/40 bg-atlas-warning/10 px-4 py-3 text-sm text-atlas-ink">
           <span className="font-semibold">عرض احتياطي من لوحة المصنع</span>
@@ -432,12 +496,12 @@ export function EmployeeListWorkspace() {
             <SortHead k="employeeNumber">الرقم</SortHead>
             <SortHead k="fullName">الاسم</SortHead>
             <SortHead k="role">الدور</SortHead>
+            <WfmTableHead>المدير المباشر</WfmTableHead>
             <SortHead k="department">القسم</SortHead>
+            <WfmTableHead>المنصب التنظيمي</WfmTableHead>
             <SortHead k="hall">القاعة</SortHead>
             <SortHead k="shift">الوردية</SortHead>
             <SortHead k="status">الحالة</SortHead>
-            <SortHead k="performanceScore">الأداء</SortHead>
-            <SortHead k="attendanceStatus">الحضور</SortHead>
             <WfmTableHead className="text-end">إجراءات</WfmTableHead>
           </WfmTableRow>
         </WfmTableHeader>
@@ -473,7 +537,7 @@ export function EmployeeListWorkspace() {
                       e.photoUrl
                         ? { backgroundImage: `url(${e.photoUrl})`, backgroundSize: "cover" }
                         : {
-                            background: `linear-gradient(135deg, hsl(${e.performanceScore * 3.6} 45% 40%), hsl(${e.performanceScore * 3.6} 35% 20%))`
+                            background: "linear-gradient(135deg, hsl(210 35% 42%), hsl(210 30% 24%))"
                           }
                     }
                   >
@@ -487,7 +551,23 @@ export function EmployeeListWorkspace() {
                 <WfmTableCell className="font-mono text-xs text-atlas-brand">{e.employeeNumber}</WfmTableCell>
                 <WfmTableCell className="font-medium text-atlas-ink">{e.fullName}</WfmTableCell>
                 <WfmTableCell className="max-w-[140px] truncate text-atlas-muted">{e.role}</WfmTableCell>
+                <WfmTableCell className="max-w-[160px] truncate text-atlas-slate">
+                  {e.reportsToId && e.managerName ? (
+                    <Link
+                      href={`/ar/workforce/employees/${encodeURIComponent(e.reportsToId)}` as Route}
+                      className="text-atlas-brand hover:underline"
+                      title={e.managerName}
+                    >
+                      {e.managerName}
+                    </Link>
+                  ) : (
+                    <span className="text-atlas-muted">—</span>
+                  )}
+                </WfmTableCell>
                 <WfmTableCell className="text-atlas-slate">{e.department}</WfmTableCell>
+                <WfmTableCell className="max-w-[140px] truncate text-atlas-muted">
+                  {e.orgPositionName ?? "—"}
+                </WfmTableCell>
                 <WfmTableCell className="text-atlas-muted">{e.hall}</WfmTableCell>
                 <WfmTableCell className="text-atlas-slate">{e.shift}</WfmTableCell>
                 <WfmTableCell>
@@ -500,19 +580,6 @@ export function EmployeeListWorkspace() {
                         : e.status === "probation"
                           ? "مراقبة"
                           : "منتهي"}
-                  </WfmStatusBadge>
-                </WfmTableCell>
-                <WfmTableCell className="font-mono text-atlas-brand">{e.performanceScore}</WfmTableCell>
-                <WfmTableCell>
-                  <WfmStatusBadge tone={attendanceTone(e.attendanceStatus)} className="gap-1.5">
-                    <AttendanceStatusIcon state={e.attendanceStatus} />
-                    {e.attendanceStatus === "present"
-                      ? "حاضر"
-                      : e.attendanceStatus === "late"
-                        ? "متأخر"
-                        : e.attendanceStatus === "absent"
-                          ? "غائب"
-                          : "إجازة"}
                   </WfmStatusBadge>
                 </WfmTableCell>
                 <WfmTableCell>
@@ -807,6 +874,8 @@ export function EmployeeListWorkspace() {
       >
         {drawerEmployee ? <ManagedEmployeeDetail employee={drawerEmployee} onClose={() => setDrawerId(null)} /> : null}
       </WfmDrawer>
+        </>
+      )}
     </div>
   );
 }

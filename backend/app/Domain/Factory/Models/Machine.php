@@ -30,6 +30,7 @@ class Machine extends Model
         'hourly_energy_consumption',
         'installation_date',
         'notes',
+        'image_url',
         'is_active',
         'status',
         'status_note',
@@ -66,6 +67,11 @@ class Machine extends Model
     public function counters(): HasMany
     {
         return $this->hasMany(MachineCounter::class);
+    }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(MachineImage::class);
     }
 
     public function activeAssignment(): HasOne

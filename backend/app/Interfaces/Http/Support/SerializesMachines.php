@@ -5,6 +5,7 @@ namespace App\Interfaces\Http\Support;
 use App\Application\Machines\MachineSpecRegistry;
 use App\Domain\Factory\Models\Machine;
 use App\Domain\Factory\Models\MachineCounter;
+use App\Domain\Factory\Models\MachineImage;
 use App\Domain\Factory\Models\MachineType;
 use App\Domain\Factory\Models\MaintenanceAction;
 use App\Domain\Factory\Models\MaintenanceTicket;
@@ -35,6 +36,9 @@ trait SerializesMachines
     {
         $registry = app(MachineSpecRegistry::class);
         $type = $machine->relationLoaded('type') ? $machine->type : null;
+        $primaryImage = $machine->relationLoaded('images')
+            ? ($machine->images->firstWhere('is_primary', true) ?? $machine->images->first())
+            : null;
 
         $base = [
             'id' => (string) $machine->id,
@@ -54,6 +58,7 @@ trait SerializesMachines
                 : null,
             'installationDate' => $machine->installation_date?->toDateString(),
             'notes' => $machine->notes,
+            'imageUrl' => $machine->image_url ?? $primaryImage?->image_url,
             'isActive' => (bool) $machine->is_active,
             'status' => $machine->status->value,
             'statusNote' => $machine->status_note,
@@ -69,6 +74,9 @@ trait SerializesMachines
         }
 
         return array_merge($base, [
+            'images' => $machine->relationLoaded('images')
+                ? $machine->images->map(fn (MachineImage $img) => $this->serializeMachineImage($img))->values()->all()
+                : [],
             'spec' => $registry->serialize($machine),
             'activeAssignment' => $machine->relationLoaded('activeAssignment') && $machine->activeAssignment
                 ? [
@@ -80,6 +88,20 @@ trait SerializesMachines
                 ? $machine->maintenanceTickets->map(fn (MaintenanceTicket $t) => $this->serializeMaintenanceTicket($t))->values()->all()
                 : [],
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function serializeMachineImage(MachineImage $image): array
+    {
+        return [
+            'id' => (string) $image->id,
+            'machineId' => (string) $image->machine_id,
+            'imageUrl' => $image->image_url,
+            'isPrimary' => (bool) $image->is_primary,
+            'uploadedAt' => $image->uploaded_at?->toIso8601String(),
+        ];
     }
 
     /**

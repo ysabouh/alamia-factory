@@ -197,6 +197,33 @@ class ProductionOrdersTest extends TestCase
         ])->assertCreated()->assertJsonStructure(['data' => ['ticketId', 'requestNo']]);
     }
 
+    public function test_downtime_photo_upload(): void
+    {
+        [$product, $machine, $mold, $shift] = $this->seedProductionContext();
+        $reasonId = \App\Domain\Factory\Models\DowntimeReason::query()->first()->id;
+
+        $orderId = $this->postJson('/api/v1/production/orders', [
+            'productId' => $product->id,
+            'machineId' => $machine->id,
+            'moldId' => $mold->id,
+            'shiftId' => $shift->id,
+            'plannedQuantity' => 500,
+        ])->json('data.id');
+
+        $downtimeId = $this->postJson("/api/v1/production/orders/{$orderId}/downtimes", [
+            'downtimeReasonId' => $reasonId,
+            'startTime' => now()->subMinutes(10)->toIso8601String(),
+        ])->json('data.id');
+
+        $this->postJson("/api/v1/machine-downtimes/{$downtimeId}/photos", [
+            'photo' => \Illuminate\Http\UploadedFile::fake()->image('fault.jpg'),
+        ])->assertCreated()->assertJsonStructure(['data' => ['id', 'filePath', 'fileName']]);
+
+        $this->getJson("/api/v1/production/orders/{$orderId}/downtimes")
+            ->assertOk()
+            ->assertJsonPath('data.0.photos.0.fileName', 'fault.jpg');
+    }
+
     /**
      * @return array{0: Product, 1: Machine, 2: Mold, 3: Shift, 4: Employee}
      */

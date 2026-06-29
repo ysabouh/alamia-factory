@@ -5,6 +5,7 @@
 import dynamic from "next/dynamic";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { CalendarCheck, Clock, Search, UserCheck, UserX } from "lucide-react";
 
@@ -68,6 +69,13 @@ const AttendanceStatusChart = dynamic(
 
 export function DailyAttendanceWorkspace() {
 
+  const searchParams = useSearchParams();
+  const reportEmployeeId = searchParams.get("employeeId") ?? undefined;
+  const reportFrom = searchParams.get("from") ?? undefined;
+  const reportTo = searchParams.get("to") ?? undefined;
+  const reportAutoLoad = searchParams.get("autoLoad") === "1";
+  const initialTab = searchParams.get("tab") === "report" ? "report" : "daily";
+
   const { can, loading: authLoading, isAuthenticated } = useFactoryAuth();
 
   const canView = can("attendance.view");
@@ -103,7 +111,7 @@ export function DailyAttendanceWorkspace() {
 
 
   const [actionBusy, setActionBusy] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"daily" | "report">("daily");
+  const [activeTab, setActiveTab] = useState<"daily" | "report">(initialTab);
 
 
 
@@ -276,7 +284,14 @@ export function DailyAttendanceWorkspace() {
         </button>
       </div>
 
-      {activeTab === "report" ? <EmployeeAttendanceReportPanel /> : null}
+      {activeTab === "report" ? (
+        <EmployeeAttendanceReportPanel
+          initialEmployeeId={reportEmployeeId}
+          initialFromDate={reportFrom}
+          initialToDate={reportTo}
+          autoLoad={reportAutoLoad}
+        />
+      ) : null}
 
       {activeTab === "daily" ? (
       <>

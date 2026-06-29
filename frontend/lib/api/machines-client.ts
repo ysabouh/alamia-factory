@@ -1,5 +1,5 @@
 import { getLaravelApiBaseUrl } from "@/lib/api/resolve-api-base";
-import { authFetchHeaders } from "@/lib/auth/factory-auth-api";
+import { readStoredToken } from "@/lib/auth/factory-auth-api";
 
 export class MachinesApiError extends Error {
   constructor(
@@ -61,6 +61,7 @@ export type MachineJson = {
   hourlyEnergyConsumption: number | null;
   installationDate: string | null;
   notes: string | null;
+  imageUrl: string | null;
   isActive: boolean;
   status: MachineRegistryStatus;
   statusNote: string | null;
@@ -71,7 +72,16 @@ export type MachineJson = {
   updatedAt: string | null;
 };
 
+export type MachineImageJson = {
+  id: string;
+  machineId: string;
+  imageUrl: string;
+  isPrimary: boolean;
+  uploadedAt: string | null;
+};
+
 export type MachineDetailJson = MachineJson & {
+  images: MachineImageJson[];
   spec: InjectionSpecJson | BlowSpecJson | null;
   activeAssignment: { id: string; mold: string | null } | null;
   recentTickets: MaintenanceTicketJson[];
@@ -153,18 +163,36 @@ type ListParams = {
   sort?: string;
 };
 
+function buildHeaders(init?: RequestInit): HeadersInit {
+  const isForm = init?.body instanceof FormData;
+  const token = readStoredToken();
+  return {
+    Accept: "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(!isForm ? { "Content-Type": "application/json" } : {}),
+    ...(init?.headers ?? {})
+  };
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${getLaravelApiBaseUrl()}${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...authFetchHeaders(), ...init?.headers },
+    headers: buildHeaders(init),
     cache: "no-store"
   });
   const text = await res.text();
   if (!res.ok) {
     let msg = text.slice(0, 240);
     try {
-      const j = JSON.parse(text) as { message?: string };
+      const j = JSON.parse(text) as {
+        message?: string;
+        errors?: Record<string, string[]>;
+      };
       if (j.message) msg = j.message;
+      if (j.errors) {
+        const first = Object.values(j.errors).flat()[0];
+        if (first) msg = first;
+      }
     } catch {
       /* ignore */
     }
@@ -324,5 +352,26 @@ export const machinesApi = {
 
   listPreventiveLogs(machineId: string) {
     return request<{ data: PreventiveLogJson[] }>(`/machines/${machineId}/preventive-logs`);
+  },
+
+  uploadImage(machineId: string, file: File, opts?: { isPrimary?: boolean }) {
+    const form = new FormData();
+    form.append("image", file);
+    if (opts?.isPrimary) form.append("isPrimary", "1");
+
+    return request<{ data: MachineImageJson }>(`/machines/${machineId}/images`, {
+      method: "POST",
+      body: form
+    });
+  },
+
+  deleteImage(imageId: string) {
+    return request<{ deleted: boolean }>(`/machine-images/${imageId}`, { method: "DELETE" });
+  },
+
+  setPrimaryImage(imageId: string) {
+    return request<{ data: MachineImageJson }>(`/machine-images/${imageId}/primary`, {
+      method: "PATCH"
+    });
   }
 };

@@ -7,19 +7,18 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Boxes,
   Brain,
-  ClipboardList,
-  Menu,
-  Palette,
   Factory,
-  Truck,
-  LayoutDashboard,
+  GitBranch,
+  Menu,
   MoonStar,
+  Palette,
   Radio,
   Search,
   Settings,
   SunMedium,
+  Truck,
+  LayoutDashboard,
   Users,
-  Wrench,
   X,
   LogOut
 } from "lucide-react";
@@ -28,6 +27,7 @@ import { useFactoryAuth } from "@/contexts/factory-auth-context";
 import { cn } from "@/lib/utils";
 import { MachinesNavGroup } from "@/components/factory/machines-nav-group";
 import { ProductionNavGroup } from "@/components/factory/production-nav-group";
+import { WorkflowNavGroup } from "@/components/factory/workflow-nav-group";
 
 function navItemActive(pathname: string, href: string) {
   if (pathname === href) return true;
@@ -44,13 +44,11 @@ const navigation = [
   { href: "/ar/system/ui", label: "نظام الواجهة الصناعية", icon: Palette },
   { href: "/ar/monitoring", label: "المراقبة الحية (MES)", icon: Radio },
   { href: "/ar/workforce", label: "القوى العاملة والمالية", icon: Users },
-  { href: "/ar/admin", label: "قسم الصيانة", icon: Wrench }
-];
+  { href: "/ar/workflow", label: "سير العمل", icon: GitBranch, isWorkflowGroup: true }
+] as const;
 
 const secondaryNavigation = [
-  { href: "/ar/admin" as const, label: "الصيانة", icon: Wrench },
   { href: "/ar/inventory" as const, label: "المستودعات", icon: Boxes },
-  { href: "/ar/workforce/employees" as const, label: "الموظفون", icon: Users },
   { href: "/ar/system/ui" as const, label: "الإعدادات", icon: Settings }
 ];
 
@@ -79,8 +77,12 @@ function SidebarNavSections({
 }) {
   return (
     <>
-      <nav className="mt-5 grid gap-1.5">
+      <nav className="grid gap-1.5">
         {navigation.map((item, index) => {
+          if ("isWorkflowGroup" in item && item.isWorkflowGroup) {
+            return <WorkflowNavGroup key="workflow" pathname={pathname} onNavigate={onNavigate} />;
+          }
+
           const Icon = item.icon;
           const active = navItemActive(pathname, item.href);
           const link = (
@@ -176,9 +178,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-atlas-canvas text-atlas-slate antialiased" dir="rtl">
-      <aside className="fixed inset-y-0 right-0 z-30 hidden w-72 border-l border-atlas-sidebarLine bg-atlas-sidebar px-4 py-6 shadow-atlasLift xl:block">
+      <aside className="fixed inset-y-0 right-0 z-30 hidden w-72 flex-col overflow-hidden border-l border-atlas-sidebarLine bg-atlas-sidebar px-4 py-6 shadow-atlasLift xl:flex">
         <SidebarBrandCard />
-        <SidebarNavSections pathname={pathname} />
+        <div className="atlas-sidebar-scroll mt-5 min-h-0 flex-1 overflow-y-auto overscroll-contain pe-1">
+          <SidebarNavSections pathname={pathname} />
+        </div>
       </aside>
 
       {mobileNavOpen ? (
@@ -190,7 +194,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onClick={closeMobileNav}
           />
           <aside
-            className="absolute inset-y-0 right-0 flex w-[min(100vw,18rem)] flex-col overflow-y-auto border-l border-atlas-sidebarLine bg-atlas-sidebar px-4 py-6 shadow-atlasLift"
+            className="atlas-sidebar-scroll absolute inset-y-0 right-0 flex w-[min(100vw,18rem)] flex-col overflow-y-auto overscroll-contain border-l border-atlas-sidebarLine bg-atlas-sidebar px-4 py-6 shadow-atlasLift"
             aria-modal="true"
             role="dialog"
             aria-labelledby="mobile-nav-title"

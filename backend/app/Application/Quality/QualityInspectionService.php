@@ -90,6 +90,14 @@ class QualityInspectionService
                 $order->update(['status' => WorkOrderStatus::Paused]);
             }
 
+            if (! empty($data['startWorkflow']) && ! empty($data['workflowTemplateId'])) {
+                app(\App\Application\Workflow\WorkflowExecutionService::class)->start([
+                    'templateId' => (int) $data['workflowTemplateId'],
+                    'subjectType' => 'quality_inspection',
+                    'subjectId' => $inspection->id,
+                ]);
+            }
+
             return $this->find($inspection->id);
         });
     }

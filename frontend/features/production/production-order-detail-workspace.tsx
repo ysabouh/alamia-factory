@@ -4,45 +4,46 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ClipboardCheck, PauseCircle, PlayCircle, ShieldCheck } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useFactoryAuth } from "@/contexts/factory-auth-context";
 import { ProductionOrderInfoPanel } from "@/features/production/production-order-info-panel";
 import { ProductionOrderLogsPanel } from "@/features/production/production-order-logs-panel";
 import { ProductionOrderQualityPanel } from "@/features/production/production-order-quality-panel";
+import { ProductionOrderDowntimesPanel, ProductionOrderPauseForm } from "@/features/production/production-order-downtimes-panel";
+import { productionProgressPercent } from "@/features/production/production-order-progress-card";
+import { WorkOrderStatusBadge } from "@/features/production/production-order-status-ui";
 import { ProductionOrderWorkersPanel } from "@/features/production/production-order-workers-panel";
+import { uploadDowntimePhotos } from "@/features/production/downtime-photo-uploader";
 import {
   productionApi,
   ProductionApiError,
-  type WorkOrderDetailJson,
-  type WorkOrderStatus
+  type WorkOrderDetailJson
 } from "@/lib/api/production-client";
 import { workforceApi } from "@/lib/api/workforce-client";
 
-const statusLabels: Record<WorkOrderStatus, string> = {
-  draft: "مسودة",
-  running: "تشغيل",
-  paused: "متوقف",
-  completed: "مكتمل",
-  cancelled: "ملغى"
-};
-
 type Tab = "info" | "workers" | "logs" | "quality" | "downtimes";
 
-type Props = { orderId: string };
+const validTabs: Tab[] = ["info", "workers", "logs", "quality", "downtimes"];
 
-export function ProductionOrderDetailWorkspace({ orderId }: Props) {
+function parseTab(value?: string | null): Tab {
+  if (value && validTabs.includes(value as Tab)) return value as Tab;
+  return "info";
+}
+
+type Props = { orderId: string; initialTab?: string | null };
+
+export function ProductionOrderDetailWorkspace({ orderId, initialTab }: Props) {
   const { can } = useFactoryAuth();
   const canExecute = can("production.execute");
   const canManage = can("production.manage");
   const canInspect = can("quality.inspect");
 
   const [order, setOrder] = useState<WorkOrderDetailJson | null>(null);
-  const [tab, setTab] = useState<Tab>("info");
+  const [tab, setTab] = useState<Tab>(() => parseTab(initialTab));
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pauseFormOpen, setPauseFormOpen] = useState(false);
 
   const [employees, setEmployees] = useState<Array<{ id: string; name: string }>>([]);
 
@@ -81,12 +82,17 @@ export function ProductionOrderDetailWorkspace({ orderId }: Props) {
     void load();
   }, [load]);
 
-  const runAction = async (action: "start" | "pause" | "resume" | "complete" | "cancel") => {
+  const runAction = async (action: "start" | "resume" | "complete" | "cancel") => {
     setBusy(true);
     try {
+      if (action === "resume") {
+        const openDowntime = order?.downtimes.find((d) => !d.endTime);
+        if (openDowntime) {
+          await productionApi.updateDowntime(openDowntime.id, { endTime: new Date().toISOString() });
+        }
+      }
       const fn = {
         start: productionApi.startOrder,
-        pause: productionApi.pauseOrder,
         resume: productionApi.resumeOrder,
         complete: productionApi.completeOrder,
         cancel: productionApi.cancelOrder
@@ -95,6 +101,39 @@ export function ProductionOrderDetailWorkspace({ orderId }: Props) {
       await load();
     } catch (e) {
       setError(e instanceof ProductionApiError ? e.message : "فشلت العملية");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmPause = async (payload: {
+    downtimeReasonId: string;
+    startTime: string;
+    notes?: string;
+    photos?: File[];
+  }) => {
+    if (!order?.machineId) {
+      setError("يجب ربط ماكينة بأمر الإنتاج قبل الإيقاف.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const downtimeRes = await productionApi.createDowntime(orderId, {
+        machineId: order.machineId,
+        startTime: payload.startTime,
+        downtimeReasonId: payload.downtimeReasonId,
+        notes: payload.notes
+      });
+      if (payload.photos?.length) {
+        await uploadDowntimePhotos(downtimeRes.data.id, payload.photos);
+      }
+      await productionApi.pauseOrder(orderId);
+      setPauseFormOpen(false);
+      setTab("downtimes");
+      await load();
+    } catch (e) {
+      setError(e instanceof ProductionApiError ? e.message : "فشل إيقاف الأمر");
     } finally {
       setBusy(false);
     }
@@ -130,7 +169,7 @@ export function ProductionOrderDetailWorkspace({ orderId }: Props) {
     );
   }
 
-  const pct = Math.min(100, Math.round((order.producedQuantity / Math.max(1, order.plannedQuantity)) * 100));
+  const progressPct = productionProgressPercent(order.producedQuantity, order.plannedQuantity);
   const tabs: Array<{ id: Tab; label: string }> = [
     { id: "info", label: "معلومات" },
     { id: "workers", label: "العمال" },
@@ -149,21 +188,25 @@ export function ProductionOrderDetailWorkspace({ orderId }: Props) {
         العودة إلى سجل الأوامر
       </Link>
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
           <p className="text-xs text-muted-foreground">أمر إنتاج</p>
           <h1 className="text-2xl font-semibold">{order.orderNo}</h1>
           <p className="text-sm text-muted-foreground">
             {order.productCode} — {order.productName}
           </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Badge>{statusLabels[order.status]}</Badge>
-            <span className="text-xs text-muted-foreground">
-              {order.producedQuantity.toLocaleString("ar")} / {order.plannedQuantity.toLocaleString("ar")} ({pct}%)
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <WorkOrderStatusBadge status={order.status} />
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {order.producedQuantity.toLocaleString("ar")} / {order.plannedQuantity.toLocaleString("ar")} (
+              {progressPct.toLocaleString("ar")}%)
             </span>
+            {order.productionManagerName ? (
+              <span className="text-xs text-muted-foreground">· مدير الإنتاج: {order.productionManagerName}</span>
+            ) : null}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           {canExecute && order.status === "draft" ? (
             <Button size="sm" className="gap-1.5" disabled={busy} onClick={() => void runAction("start")}>
               <PlayCircle className="h-4 w-4 translate-y-0.5" />
@@ -171,7 +214,13 @@ export function ProductionOrderDetailWorkspace({ orderId }: Props) {
             </Button>
           ) : null}
           {canExecute && order.status === "running" ? (
-            <Button size="sm" variant="secondary" className="gap-1.5" disabled={busy} onClick={() => void runAction("pause")}>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="gap-1.5"
+              disabled={busy}
+              onClick={() => setPauseFormOpen(true)}
+            >
               <PauseCircle className="h-4 w-4 translate-y-0.5" />
               إيقاف
             </Button>
@@ -201,6 +250,14 @@ export function ProductionOrderDetailWorkspace({ orderId }: Props) {
       </div>
 
       {error ? <p className="text-destructive">{error}</p> : null}
+
+      <ProductionOrderPauseForm
+        order={order}
+        open={pauseFormOpen}
+        busy={busy}
+        onCancel={() => setPauseFormOpen(false)}
+        onConfirm={confirmPause}
+      />
 
       <div className="flex flex-wrap gap-2">
         {tabs.map((t) => (
@@ -248,27 +305,12 @@ export function ProductionOrderDetailWorkspace({ orderId }: Props) {
       ) : null}
 
       {tab === "downtimes" ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">توقفات الماكينة</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {order.downtimes.length ? (
-              order.downtimes.map((d) => (
-                <div key={d.id} className="rounded-lg border border-border p-3 text-sm">
-                  <p>{d.reasonName ?? "—"}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {d.startTime ? new Date(d.startTime).toLocaleString("ar") : "—"}
-                    {d.downtimeMinutes != null ? ` · ${d.downtimeMinutes} د` : ""}
-                  </p>
-                  {d.requestNo ? <p className="text-xs text-amber-600">صيانة: {d.requestNo}</p> : null}
-                </div>
-              ))
-            ) : (
-              <p className="text-muted-foreground">لا توجد توقفات.</p>
-            )}
-          </CardContent>
-        </Card>
+        <ProductionOrderDowntimesPanel
+          order={order}
+          canExecute={canExecute}
+          onChanged={load}
+          onError={setError}
+        />
       ) : null}
     </div>
   );

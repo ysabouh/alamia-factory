@@ -21,7 +21,7 @@ class WorkOrderService
     public function paginate(array $filters, int $page, int $pageSize): LengthAwarePaginator
     {
         return $this->filterQuery($filters)
-            ->with(['product', 'machine', 'mold', 'shift', 'supervisor', 'productionManager'])
+            ->with(['product.images', 'machine.type', 'mold.images', 'shift', 'supervisor', 'productionManager'])
             ->orderByDesc('production_date')
             ->orderByDesc('id')
             ->paginate(perPage: $pageSize, page: $page);
@@ -84,6 +84,8 @@ class WorkOrderService
                 'inspections.photos',
                 'inspections.defectLinks.defect',
                 'downtimes.reason',
+                'downtimes.photos',
+                'downtimes.maintenanceTicket',
             ])
             ->findOrFail($id);
     }
@@ -121,6 +123,15 @@ class WorkOrderService
                 foreach ($data['workers'] as $row) {
                     $this->addWorker($order, $row, $userId);
                 }
+            }
+
+            if (! empty($data['startWorkflow']) && ! empty($data['workflowTemplateId'])) {
+                app(\App\Application\Workflow\WorkflowExecutionService::class)->start([
+                    'templateId' => (int) $data['workflowTemplateId'],
+                    'subjectType' => 'work_order',
+                    'subjectId' => $order->id,
+                    'priority' => $data['priority'] ?? null,
+                ]);
             }
 
             return $this->findDetail($order->id);

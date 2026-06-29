@@ -9,7 +9,7 @@ import {
   useReactTable,
   type ColumnDef
 } from "@tanstack/react-table";
-import { Factory, Plus, Search } from "lucide-react";
+import { Factory, ImageIcon, Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ import {
   type MachineJson,
   type MachineRegistryStatus
 } from "@/lib/api/machines-client";
+import { resolveMediaUrl } from "@/lib/api/resolve-media-url";
 
 const PAGE_SIZE = 20;
 
@@ -86,6 +87,23 @@ export function MachinesRegistryWorkspace() {
 
   const columns = useMemo<ColumnDef<MachineJson>[]>(
     () => [
+      {
+        id: "thumb",
+        header: "",
+        cell: ({ row }) =>
+          row.original.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={resolveMediaUrl(row.original.imageUrl)}
+              alt=""
+              className="h-10 w-10 rounded object-cover"
+            />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded bg-muted/30">
+              <ImageIcon className="h-4 w-4 text-muted-foreground" />
+            </div>
+          )
+      },
       {
         id: "code",
         header: "الرمز",

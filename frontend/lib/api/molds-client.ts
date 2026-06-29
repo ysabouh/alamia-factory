@@ -1,5 +1,5 @@
 import { getLaravelApiBaseUrl } from "@/lib/api/resolve-api-base";
-import { authFetchHeaders } from "@/lib/auth/factory-auth-api";
+import { readStoredToken } from "@/lib/auth/factory-auth-api";
 
 export class MoldsApiError extends Error {
   constructor(
@@ -201,16 +201,21 @@ type ListParams = {
   sort?: string;
 };
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers: Record<string, string> = { ...authFetchHeaders() };
+function buildHeaders(init?: RequestInit): HeadersInit {
   const isForm = init?.body instanceof FormData;
-  if (!isForm) {
-    headers["Content-Type"] = "application/json";
-  }
+  const token = readStoredToken();
+  return {
+    Accept: "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(!isForm ? { "Content-Type": "application/json" } : {}),
+    ...(init?.headers ?? {})
+  };
+}
 
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${getLaravelApiBaseUrl()}${path}`, {
     ...init,
-    headers: { ...headers, ...(init?.headers as Record<string, string> | undefined) },
+    headers: buildHeaders(init),
     cache: "no-store"
   });
   const text = await res.text();

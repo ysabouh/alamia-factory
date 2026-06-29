@@ -3,6 +3,8 @@
 namespace App\Interfaces\Http\Controllers\Api\V1;
 
 use App\Application\Maintenance\OpenMaintenanceTicket;
+use App\Application\Workflow\WorkflowExecutionService;
+use App\Domain\Factory\Models\WorkflowTemplate;
 use App\Domain\Factory\Models\MaintenanceTicket;
 use App\Interfaces\Http\Requests\OpenMaintenanceTicketRequest;
 use App\Interfaces\Http\Resources\MaintenanceTicketResource;
@@ -19,10 +21,27 @@ class MaintenanceController
 
     public function store(
         OpenMaintenanceTicketRequest $request,
-        OpenMaintenanceTicket $openTicket
+        OpenMaintenanceTicket $openTicket,
+        WorkflowExecutionService $workflow,
     ): MaintenanceTicketResource {
-        return MaintenanceTicketResource::make(
-            $openTicket->handle($request->validated(), $request->user()?->id)->load('machine')
-        );
+        $ticket = $openTicket->handle($request->validated(), $request->user()?->id)->load('machine');
+
+        if ($request->boolean('startWorkflow')) {
+            $template = WorkflowTemplate::query()
+                ->where('code', $request->input('workflowTemplateCode', 'MAINTENANCE_REQUEST'))
+                ->where('is_active', true)
+                ->first();
+
+            if ($template?->published_version_id) {
+                $instance = $workflow->start([
+                    'templateId' => $template->id,
+                    'subjectType' => 'maintenance_ticket',
+                    'subjectId' => $ticket->id,
+                ]);
+                $ticket->setAttribute('workflow_instance_id', $instance->id);
+            }
+        }
+
+        return MaintenanceTicketResource::make($ticket);
     }
 }

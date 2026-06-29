@@ -1,8 +1,9 @@
 import { ProductionOrderDetailWorkspace } from "@/features/production/production-order-detail-workspace";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> };
 
-export default async function ProductionOrderDetailPage({ params }: Props) {
+export default async function ProductionOrderDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
-  return <ProductionOrderDetailWorkspace orderId={id} />;
+  const { tab } = await searchParams;
+  return <ProductionOrderDetailWorkspace orderId={id} initialTab={tab} />;
 }

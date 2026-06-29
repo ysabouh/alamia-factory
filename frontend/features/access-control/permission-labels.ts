@@ -39,12 +39,25 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "overtime.delete": "حذف طلبات الإضافي (مدير)",
   "payroll.view": "عرض ومعاينة الرواتب",
   "payroll.generate": "توليد مسير الرواتب",
-  "shifts.assign": "تعيين ورديات للموظفين"
+  "shifts.assign": "تعيين ورديات للموظفين",
+  "workflow.templates.view": "عرض قوالب سير العمل",
+  "workflow.templates.manage": "إدارة قوالب سير العمل",
+  "workflow.instances.manage": "إدارة وتشغيل سير العمل",
+  "workflow.instances.view_all": "عرض جميع سير العمل",
+  "workflow.tasks.view_own": "عرض مهامي",
+  "workflow.tasks.execute": "تنفيذ المهام",
+  "workflow.dashboard.view": "لوحة سير العمل والتحليلات",
+  "direct_tasks.view": "عرض المهام المباشرة",
+  "direct_tasks.create": "إنشاء مهام مباشرة",
+  "direct_tasks.manage": "إدارة المهام المباشرة",
+  "direct_tasks.execute": "تنفيذ المهام المباشرة"
 };
 
 export const ROLE_LABELS: Record<string, string> = {
   admin: "مدير النظام (كامل الصلاحيات)",
   supervisor: "مشرف تشغيل",
+  workflow_admin: "مسؤول سير العمل",
+  department_manager: "مدير قسم",
   hr_manager: "مدير موارد بشرية",
   employee: "موظف (حضور ذاتي)"
 };

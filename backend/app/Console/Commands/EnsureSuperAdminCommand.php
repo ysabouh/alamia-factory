@@ -65,6 +65,17 @@ class EnsureSuperAdminCommand extends Command
             'payroll.view',
             'payroll.generate',
             'shifts.assign',
+            'workflow.templates.view',
+            'workflow.templates.manage',
+            'workflow.instances.manage',
+            'workflow.instances.view_all',
+            'workflow.tasks.view_own',
+            'workflow.tasks.execute',
+            'workflow.dashboard.view',
+            'direct_tasks.view',
+            'direct_tasks.create',
+            'direct_tasks.manage',
+            'direct_tasks.execute',
         ];
 
         $guard = 'web';
@@ -81,6 +92,43 @@ class EnsureSuperAdminCommand extends Command
             'production.execute',
             'quality.inspect',
             'quality.manage_checklists',
+            'workflow.instances.view_all',
+            'workflow.tasks.view_own',
+            'workflow.tasks.execute',
+            'workflow.dashboard.view',
+            'workflow.templates.view',
+            'direct_tasks.view',
+            'direct_tasks.execute',
+        ]);
+
+        Role::findOrCreate('workflow_admin', $guard)->givePermissionTo([
+            'workflow.templates.view',
+            'workflow.templates.manage',
+            'workflow.instances.manage',
+            'workflow.instances.view_all',
+            'workflow.tasks.view_own',
+            'workflow.tasks.execute',
+            'workflow.dashboard.view',
+            'direct_tasks.view',
+        ]);
+
+        Role::findOrCreate('department_manager', $guard)->givePermissionTo([
+            'workflow.instances.view_all',
+            'workflow.tasks.view_own',
+            'workflow.tasks.execute',
+            'workflow.dashboard.view',
+            'workflow.templates.view',
+            'direct_tasks.view',
+        ]);
+
+        Role::findOrCreate('hr_manager', $guard)->givePermissionTo(['direct_tasks.view']);
+
+        Role::findOrCreate('employee', $guard)->givePermissionTo([
+            'attendance.view',
+            'attendance.record',
+            'overtime.request',
+            'direct_tasks.view',
+            'direct_tasks.execute',
         ]);
 
         $employee = Employee::query()->firstOrCreate(

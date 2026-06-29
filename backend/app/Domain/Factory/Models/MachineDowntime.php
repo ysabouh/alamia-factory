@@ -4,6 +4,7 @@ namespace App\Domain\Factory\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class MachineDowntime extends Model
@@ -16,6 +17,8 @@ class MachineDowntime extends Model
         'downtime_minutes',
         'downtime_reason_id',
         'notes',
+        'fault_description',
+        'repair_method',
     ];
 
     protected function casts(): array
@@ -44,5 +47,10 @@ class MachineDowntime extends Model
     public function maintenanceTicket(): HasOne
     {
         return $this->hasOne(MaintenanceTicket::class, 'machine_downtime_id');
+    }
+
+    public function photos(): HasMany
+    {
+        return $this->hasMany(MachineDowntimePhoto::class)->orderBy('uploaded_at');
     }
 }

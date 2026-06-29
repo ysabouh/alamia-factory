@@ -418,7 +418,7 @@ export function ProductForm({
         <Card className="border-border/60 bg-card/30">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">إعدادات الماكينة (قديم)</CardTitle>
-            <Button type="button" size="sm" variant="outline" onClick={() => machineFields.append({ machineId: "", cycleTime: "", injectionPressure: "", holdingPressure: "", coolingTime: "", moldTemperature: "", shotWeight: "", clampForce: "", backPressure: "", screwSpeed: "", setupNotes: "" })}>
+            <Button type="button" size="sm" variant="outline" onClick={() => machineFields.append({ machineId: "", cycleTime: undefined, injectionPressure: undefined, holdingPressure: undefined, coolingTime: undefined, moldTemperature: undefined, shotWeight: undefined, clampForce: undefined, backPressure: undefined, screwSpeed: undefined, setupNotes: "" })}>
               <Plus className="ml-1 h-4 w-4" />
               ماكينة
             </Button>

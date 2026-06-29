@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileSpreadsheet } from "lucide-react";
 
 import {
@@ -53,15 +53,26 @@ function formatHours(h: number): string {
   return Number.isFinite(h) ? h.toFixed(2) : "0.00";
 }
 
-export function EmployeeAttendanceReportPanel() {
+export function EmployeeAttendanceReportPanel({
+  initialEmployeeId,
+  initialFromDate,
+  initialToDate,
+  autoLoad = false
+}: {
+  initialEmployeeId?: string;
+  initialFromDate?: string;
+  initialToDate?: string;
+  autoLoad?: boolean;
+} = {}) {
   const [employees, setEmployees] = useState<Array<{ id: string; label: string }>>([]);
-  const [employeeId, setEmployeeId] = useState("");
-  const [fromDate, setFromDate] = useState(defaultFromDate);
-  const [toDate, setToDate] = useState(todayIso);
+  const [employeeId, setEmployeeId] = useState(initialEmployeeId ?? "");
+  const [fromDate, setFromDate] = useState(initialFromDate ?? defaultFromDate());
+  const [toDate, setToDate] = useState(initialToDate ?? todayIso());
   const [onlyActiveDays, setOnlyActiveDays] = useState(true);
   const [report, setReport] = useState<EmployeeAttendanceReportJson | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autoLoadedRef = useRef(false);
 
   useEffect(() => {
     void (async () => {
@@ -98,6 +109,12 @@ export function EmployeeAttendanceReportPanel() {
       setLoading(false);
     }
   }, [employeeId, fromDate, toDate]);
+
+  useEffect(() => {
+    if (!autoLoad || !employeeId || autoLoadedRef.current) return;
+    autoLoadedRef.current = true;
+    void load();
+  }, [autoLoad, employeeId, load]);
 
   const visibleDays = useMemo(() => {
     if (!report) return [];

@@ -31,6 +31,7 @@ import { getMachineStateVisual } from "@/components/factory/machine-state";
 import { useFactoryAuth } from "@/contexts/factory-auth-context";
 import { MachineCountersPanel } from "@/features/machines/management/machine-counters-panel";
 import { MachineFailuresPanel } from "@/features/machines/management/machine-failures-panel";
+import { MachineImageUploader } from "@/features/machines/management/machine-image-uploader";
 import { MachineMaintenancePanel } from "@/features/machines/management/machine-maintenance-panel";
 import { formatSpecEntries } from "@/features/machines/management/machine-spec-labels";
 import { machineStatusLabels } from "@/features/machines/management/machine-status-ui";
@@ -40,6 +41,7 @@ import {
   type MachineDetailJson,
   type MaintenanceTicketJson
 } from "@/lib/api/machines-client";
+import { resolveMediaUrl } from "@/lib/api/resolve-media-url";
 import { cn } from "@/lib/utils";
 
 type TabId = "overview" | "specs" | "counters" | "failures" | "maintenance";
@@ -247,9 +249,20 @@ export function MachineDetailWorkspace({ machineId }: { machineId: string }) {
 
         <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
           <div className="flex gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-rose-200/25 bg-rose-950/35 backdrop-blur-sm">
-              <TypeIcon type={machine.type} className="h-7 w-7 text-rose-100" />
-            </div>
+            {machine.imageUrl ? (
+              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-rose-200/25 bg-rose-950/35">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={resolveMediaUrl(machine.imageUrl)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-rose-200/25 bg-rose-950/35 backdrop-blur-sm">
+                <TypeIcon type={machine.type} className="h-7 w-7 text-rose-100" />
+              </div>
+            )}
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-rose-200/60">جواز الماكينة</p>
               <h1 className="font-mono text-2xl font-bold text-rose-50 md:text-3xl">
@@ -402,6 +415,20 @@ export function MachineDetailWorkspace({ machineId }: { machineId: string }) {
       {/* Tab content */}
       {tab === "overview" && (
         <div className="grid gap-4 lg:grid-cols-2">
+          <Card className="border-border/60 bg-card/25 lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-base">صورة الماكينة</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MachineImageUploader
+                machineId={machineId}
+                images={machine.images ?? []}
+                canManage={canManage}
+                onChange={() => void load()}
+              />
+            </CardContent>
+          </Card>
+
           <Card className="border-border/60 bg-card/25">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">

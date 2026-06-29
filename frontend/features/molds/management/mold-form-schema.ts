@@ -232,34 +232,34 @@ export function detailToFormValues(detail: import("@/lib/api/molds-client").Mold
     isActive: detail.isActive,
     injectionSpec:
       detail.moldType === "injection"
-        ? {
+        ? ({
             ...(spec as import("@/lib/api/molds-client").InjectionMoldSpecJson),
             supportedMaterials: arrayToCsv((spec as import("@/lib/api/molds-client").InjectionMoldSpecJson).supportedMaterials)
-          }
+          } as MoldFormValues["injectionSpec"])
         : {},
     petBlowSpec:
       detail.moldType === "pet_blow"
-        ? {
+        ? ({
             ...(spec as import("@/lib/api/molds-client").PetBlowMoldSpecJson),
             blowType: (spec as import("@/lib/api/molds-client").PetBlowMoldSpecJson).blowType ?? "",
             supportedPolymers: arrayToCsv((spec as import("@/lib/api/molds-client").PetBlowMoldSpecJson).supportedPolymers)
-          }
+          } as MoldFormValues["petBlowSpec"])
         : {},
     compressionSpec:
       detail.moldType === "compression"
-        ? {
+        ? ({
             ...(spec as import("@/lib/api/molds-client").CompressionMoldSpecJson),
             supportedMaterials: arrayToCsv((spec as import("@/lib/api/molds-client").CompressionMoldSpecJson).supportedMaterials)
-          }
+          } as MoldFormValues["compressionSpec"])
         : {},
     polyethyleneSpec:
       detail.moldType === "polyethylene"
-        ? {
+        ? ({
             ...(spec as import("@/lib/api/molds-client").PolyethyleneMoldSpecJson),
             polyethyleneType: (spec as import("@/lib/api/molds-client").PolyethyleneMoldSpecJson).polyethyleneType ?? "",
             productionMethod: (spec as import("@/lib/api/molds-client").PolyethyleneMoldSpecJson).productionMethod ?? "",
             supportedProducts: arrayToCsv((spec as import("@/lib/api/molds-client").PolyethyleneMoldSpecJson).supportedProducts)
-          }
+          } as MoldFormValues["polyethyleneSpec"])
         : {}
   };
 }

@@ -46,6 +46,7 @@ class MachineService
                 'type',
                 'injectionSpec',
                 'blowSpec',
+                'images' => fn ($q) => $q->orderByDesc('is_primary')->orderByDesc('uploaded_at'),
                 'activeAssignment.mold',
                 'maintenanceTickets' => fn ($q) => $q->latest()->limit(5),
             ])

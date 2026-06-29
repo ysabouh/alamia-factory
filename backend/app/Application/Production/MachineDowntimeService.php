@@ -25,7 +25,7 @@ class MachineDowntimeService
     {
         return MachineDowntime::query()
             ->where('work_order_id', $workOrderId)
-            ->with(['reason', 'maintenanceTicket'])
+            ->with(['reason', 'maintenanceTicket', 'photos'])
             ->orderByDesc('start_time')
             ->get();
     }
@@ -76,6 +76,12 @@ class MachineDowntimeService
      */
     public function update(MachineDowntime $downtime, array $data): MachineDowntime
     {
+        if (array_key_exists('downtimeReasonId', $data)) {
+            $downtime->downtime_reason_id = ! empty($data['downtimeReasonId']) ? (int) $data['downtimeReasonId'] : null;
+        }
+        if (array_key_exists('startTime', $data)) {
+            $downtime->start_time = $data['startTime'];
+        }
         if (array_key_exists('endTime', $data)) {
             $downtime->end_time = $data['endTime'];
         }
@@ -87,9 +93,15 @@ class MachineDowntimeService
         if (array_key_exists('notes', $data)) {
             $downtime->notes = $data['notes'];
         }
+        if (array_key_exists('faultDescription', $data)) {
+            $downtime->fault_description = $data['faultDescription'];
+        }
+        if (array_key_exists('repairMethod', $data)) {
+            $downtime->repair_method = $data['repairMethod'];
+        }
         $downtime->save();
 
-        return $downtime->fresh(['reason', 'maintenanceTicket']);
+        return $downtime->fresh(['reason', 'maintenanceTicket', 'photos']);
     }
 
     public function createMaintenanceRequest(MachineDowntime $downtime, array $data, ?int $userId): MaintenanceTicket

@@ -133,6 +133,13 @@ export type QualityDefectCatalogJson = {
   isActive: boolean;
 };
 
+export type MachineDowntimePhotoJson = {
+  id: string;
+  filePath: string;
+  fileName: string;
+  uploadedAt: string | null;
+};
+
 export type MachineDowntimeJson = {
   id: string;
   workOrderId: string | null;
@@ -141,10 +148,14 @@ export type MachineDowntimeJson = {
   endTime: string | null;
   downtimeMinutes: number | null;
   downtimeReasonId: string | null;
+  reasonCode?: string | null;
   reasonName?: string | null;
   notes?: string | null;
+  faultDescription?: string | null;
+  repairMethod?: string | null;
   maintenanceTicketId?: string | null;
   requestNo?: string | null;
+  photos: MachineDowntimePhotoJson[];
 };
 
 export type DowntimeReasonJson = {
@@ -160,15 +171,20 @@ export type WorkOrderJson = {
   productId: string;
   productCode?: string | null;
   productName?: string | null;
+  productImageUrl?: string | null;
   productionDate: string | null;
   machineId: string | null;
   machineCode?: string | null;
   machineName?: string | null;
+  machineBrand?: string | null;
+  machineModel?: string | null;
+  machineImageUrl?: string | null;
   machineTypeId?: string | null;
   machineTypeName?: string | null;
   moldId: string | null;
   moldCode?: string | null;
   moldName?: string | null;
+  moldImageUrl?: string | null;
   moldType?: string | null;
   shiftId: string | null;
   shiftName?: string | null;
@@ -509,7 +525,16 @@ export const productionApi = {
     return request<{ data: MachineDowntimeJson[] }>(`/production/orders/${orderId}/downtimes`);
   },
 
-  createDowntime(orderId: string, payload: { machineId: string; startTime: string; downtimeReasonId: string; notes?: string }) {
+  createDowntime(
+    orderId: string,
+    payload: {
+      machineId: string;
+      startTime: string;
+      endTime?: string;
+      downtimeReasonId: string;
+      notes?: string;
+    }
+  ) {
     return request<{ data: MachineDowntimeJson }>(`/production/orders/${orderId}/downtimes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -517,12 +542,44 @@ export const productionApi = {
     });
   },
 
-  updateDowntime(downtimeId: string, payload: { endTime?: string; notes?: string }) {
+  updateDowntime(
+    downtimeId: string,
+    payload: {
+      downtimeReasonId?: string;
+      startTime?: string;
+      endTime?: string;
+      notes?: string;
+      faultDescription?: string;
+      repairMethod?: string;
+    }
+  ) {
     return request<{ data: MachineDowntimeJson }>(`/machine-downtimes/${downtimeId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
+  },
+
+  uploadDowntimePhoto(downtimeId: string, file: File) {
+    const fd = new FormData();
+    fd.append("photo", file);
+    return request<{ data: MachineDowntimePhotoJson }>(`/machine-downtimes/${downtimeId}/photos`, {
+      method: "POST",
+      body: fd
+    });
+  },
+
+  replaceDowntimePhoto(photoId: string, file: File) {
+    const fd = new FormData();
+    fd.append("photo", file);
+    return request<{ data: MachineDowntimePhotoJson }>(`/machine-downtime-photos/${photoId}/replace`, {
+      method: "POST",
+      body: fd
+    });
+  },
+
+  deleteDowntimePhoto(photoId: string) {
+    return request<{ deleted: boolean }>(`/machine-downtime-photos/${photoId}/delete`, { method: "POST" });
   },
 
   downtimeReasons() {

@@ -79,6 +79,7 @@ class WorkforceController
 
         $currencies = Currency::query()
             ->where('is_active', true)
+            ->where('code', 'USD')
             ->orderByDesc('is_base')
             ->orderBy('code')
             ->get(['id', 'code', 'name', 'symbol', 'usd_exchange_rate', 'is_base'])

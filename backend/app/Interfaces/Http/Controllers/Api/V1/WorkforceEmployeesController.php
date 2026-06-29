@@ -2,7 +2,10 @@
 
 namespace App\Interfaces\Http\Controllers\Api\V1;
 
+use App\Application\Workforce\DepartmentHierarchyService;
+use App\Application\Workforce\EmployeeOrgPositionService;
 use App\Domain\Factory\Models\Employee;
+use App\Domain\Factory\Models\JobRole;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -12,6 +15,11 @@ use Illuminate\Support\Carbon;
  */
 class WorkforceEmployeesController
 {
+    public function __construct(
+        private readonly EmployeeOrgPositionService $orgPositionService,
+        private readonly DepartmentHierarchyService $hierarchy,
+    ) {}
+
     /**
      * @return array<int|string, mixed>
      */
@@ -19,13 +27,16 @@ class WorkforceEmployeesController
     {
         return [
             'hall:id,name,code',
-            'organizationalDepartment:id,name,code',
+            'organizationalDepartment:id,name,code,parent_id',
+            'orgPosition:id,department_id,name,code',
             'jobRole:id,name,code,role_level',
             'shift:id,name,code,starts_at,ends_at',
             'employmentStatus:id,name,code',
             'currency:id,code,name,symbol,usd_exchange_rate,is_base',
             'user.roles' => fn ($q) => $q->where('guard_name', 'web'),
             'user.roles.permissions' => fn ($q) => $q->where('guard_name', 'web'),
+            'reportsTo:id,first_name,last_name,name,employee_number',
+            'certifications',
         ];
     }
 
@@ -119,6 +130,15 @@ class WorkforceEmployeesController
         ]);
 
         $attrs = $this->mappedAttributes($request, true);
+        if ($response = $this->validateReportingRules($attrs)) {
+            return $response;
+        }
+        if ($response = $this->validateOrgPositionRules($attrs)) {
+            return $response;
+        }
+        if ($this->isGeneralManagerRoleId($attrs['job_role_id'] ?? null)) {
+            $attrs['reports_to_id'] = null;
+        }
         $employee = new Employee;
         $employee->fill($attrs);
         $code = $attrs['employee_number'] ?? $attrs['code'] ?? null;
@@ -138,6 +158,21 @@ class WorkforceEmployeesController
     public function update(Request $request, Employee $employee): JsonResponse
     {
         $patch = $this->mappedAttributesForPatch($request);
+        $merged = array_merge([
+            'job_role_id' => $employee->job_role_id,
+            'reports_to_id' => $employee->reports_to_id,
+            'department_id' => $employee->department_id,
+            'org_position_id' => $employee->org_position_id,
+        ], $patch);
+        if ($response = $this->validateReportingRules($merged, $employee)) {
+            return $response;
+        }
+        if ($response = $this->validateOrgPositionRules($merged, $employee)) {
+            return $response;
+        }
+        if ($this->isGeneralManagerRoleId($merged['job_role_id'] ?? null)) {
+            $patch['reports_to_id'] = null;
+        }
         foreach ($patch as $key => $value) {
             $employee->{$key} = $value;
         }
@@ -160,7 +195,16 @@ class WorkforceEmployeesController
     private function mappedAttributes(Request $request, bool $isCreate): array
     {
         $in = $request->all();
-        $g = static fn (string $camel, string $snake) => $in[$camel] ?? $in[$snake] ?? null;
+        $g = static function (string $camel, string $snake) use ($in): mixed {
+            if (array_key_exists($camel, $in)) {
+                return $in[$camel];
+            }
+            if (array_key_exists($snake, $in)) {
+                return $in[$snake];
+            }
+
+            return null;
+        };
 
         $employeeNumber = $g('employeeNumber', 'employee_number');
         $firstName = $g('firstName', 'first_name');
@@ -180,6 +224,8 @@ class WorkforceEmployeesController
             'hire_date' => $this->nullableDate($g('hireDate', 'hire_date')),
             'hall_id' => $this->nullableFk($g('hallId', 'hall_id')),
             'department_id' => $this->nullableFk($g('departmentId', 'department_id')),
+            'org_position_id' => $this->nullableFk($g('orgPositionId', 'org_position_id')),
+            'reports_to_id' => $this->nullableFk($g('reportsToId', 'reports_to_id')),
             'job_role_id' => $this->nullableFk($g('jobRoleId', 'job_role_id')),
             'shift_id' => $this->nullableFk($g('shiftId', 'shift_id')),
             'employment_status_id' => $this->nullableFk($g('statusId', 'status_id')),
@@ -201,9 +247,32 @@ class WorkforceEmployeesController
 
         if ($isCreate) {
             $out['code'] = $out['employee_number'] ?: ('EMP-'.substr((string) time(), -10));
+            $out = $this->applyEmployeeCreateDefaults($out);
         }
 
         return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attrs
+     * @return array<string, mixed>
+     */
+    private function applyEmployeeCreateDefaults(array $attrs): array
+    {
+        $defaults = [
+            'performance_score' => 0.0,
+            'reliability_score' => 0.0,
+            'safety_score' => 0.0,
+            'annual_leave_balance' => 0,
+        ];
+
+        foreach ($defaults as $key => $value) {
+            if (! array_key_exists($key, $attrs) || $attrs[$key] === null) {
+                $attrs[$key] = $value;
+            }
+        }
+
+        return $attrs;
     }
 
     /**
@@ -226,6 +295,8 @@ class WorkforceEmployeesController
             'hireDate' => 'hire_date',
             'hallId' => 'hall_id',
             'departmentId' => 'department_id',
+            'orgPositionId' => 'org_position_id',
+            'reportsToId' => 'reports_to_id',
             'jobRoleId' => 'job_role_id',
             'shiftId' => 'shift_id',
             'statusId' => 'employment_status_id',
@@ -244,7 +315,7 @@ class WorkforceEmployeesController
             if (! array_key_exists($camel, $in) && ! array_key_exists($snake, $in)) {
                 continue;
             }
-            $v = $in[$camel] ?? $in[$snake];
+            $v = array_key_exists($camel, $in) ? $in[$camel] : $in[$snake];
             if (str_ends_with($snake, '_id')) {
                 $out[$snake] = $v === '' || $v === null ? null : (int) $v;
             } elseif (in_array($snake, ['birth_date', 'hire_date'], true)) {
@@ -330,6 +401,10 @@ class WorkforceEmployeesController
             'address' => $e->address,
             'hallId' => $e->hall_id !== null ? (string) $e->hall_id : null,
             'departmentId' => $e->department_id !== null ? (string) $e->department_id : null,
+            'orgPositionId' => $e->org_position_id !== null ? (string) $e->org_position_id : null,
+            'orgPositionName' => $e->orgPosition?->name,
+            'reportsToId' => $e->reports_to_id !== null ? (string) $e->reports_to_id : null,
+            'managerName' => $e->reportsTo?->full_name,
             'jobRoleId' => $e->job_role_id !== null ? (string) $e->job_role_id : null,
             'shiftId' => $e->shift_id !== null ? (string) $e->shift_id : null,
             'employeeStatusId' => $e->employment_status_id !== null ? (string) $e->employment_status_id : null,
@@ -365,6 +440,11 @@ class WorkforceEmployeesController
                 'name' => $e->organizationalDepartment->name,
                 'code' => $e->organizationalDepartment->code,
             ] : null,
+            'orgPosition' => $e->orgPosition ? [
+                'id' => (string) $e->orgPosition->id,
+                'name' => $e->orgPosition->name,
+                'code' => $e->orgPosition->code,
+            ] : null,
             'jobRole' => $e->jobRole ? [
                 'id' => (string) $e->jobRole->id,
                 'name' => $e->jobRole->name,
@@ -383,6 +463,16 @@ class WorkforceEmployeesController
                 'name' => $e->employmentStatus->name,
                 'code' => $e->employmentStatus->code,
             ] : null,
+            'certifications' => $e->relationLoaded('certifications')
+                ? $e->certifications->map(fn ($c) => [
+                    'id' => (string) $c->id,
+                    'name' => $c->name,
+                    'issuer' => $c->issuer,
+                    'issuedAt' => $c->issued_at?->toDateString(),
+                    'expiresAt' => $c->expires_at?->toDateString(),
+                    'certificateNumber' => $c->certificate_number,
+                ])->values()->all()
+                : [],
             'systemUser' => $this->serializeLinkedUser($e),
         ];
     }
@@ -405,5 +495,75 @@ class WorkforceEmployeesController
             'roles' => $user->roleNamesForApi(),
             'permissions' => $user->permissionNamesForApi(),
         ];
+    }
+
+    private function isGeneralManagerRoleId(?int $jobRoleId): bool
+    {
+        if ($jobRoleId === null) {
+            return false;
+        }
+
+        $role = JobRole::query()->find($jobRoleId);
+        if (! $role) {
+            return false;
+        }
+
+        return strtoupper((string) $role->code) === 'GM' || (int) $role->role_level >= 10;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attrs
+     */
+    private function validateReportingRules(array $attrs, ?Employee $existing = null): ?JsonResponse
+    {
+        $jobRoleId = $attrs['job_role_id'] ?? $existing?->job_role_id;
+        $reportsToId = array_key_exists('reports_to_id', $attrs)
+            ? $attrs['reports_to_id']
+            : $existing?->reports_to_id;
+
+        if ($this->isGeneralManagerRoleId($jobRoleId !== null ? (int) $jobRoleId : null)) {
+            return null;
+        }
+
+        if ($reportsToId === null) {
+            return response()->json([
+                'message' => 'يجب تحديد المدير المباشر — الاستثناء الوحيد هو دور المدير العام',
+            ], 422);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attrs
+     */
+    private function validateOrgPositionRules(array $attrs, ?Employee $existing = null): ?JsonResponse
+    {
+        $departmentId = $attrs['department_id'] ?? $existing?->department_id;
+        $orgPositionId = array_key_exists('org_position_id', $attrs)
+            ? $attrs['org_position_id']
+            : $existing?->org_position_id;
+
+        try {
+            $this->orgPositionService->assertPositionForEmployee(
+                $orgPositionId !== null ? (int) $orgPositionId : null,
+                $departmentId !== null ? (int) $departmentId : null,
+            );
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $reportsToId = array_key_exists('reports_to_id', $attrs)
+            ? $attrs['reports_to_id']
+            : $existing?->reports_to_id;
+        if ($reportsToId !== null && $departmentId !== null) {
+            $manager = Employee::query()->find($reportsToId);
+            if ($manager?->department_id !== null
+                && ! $this->hierarchy->isInSameBranch((int) $departmentId, (int) $manager->department_id)) {
+                return response()->json(['message' => __('factory.org_chart_reporting_branch_mismatch')], 422);
+            }
+        }
+
+        return null;
     }
 }

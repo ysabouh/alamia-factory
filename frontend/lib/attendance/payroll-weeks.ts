@@ -30,3 +30,25 @@ export function formatPayrollWeekRange(periodStart: string, periodEnd: string): 
   const fmt = (iso: string) => dayjs(iso).format("DD/MM/YYYY");
   return `${fmt(periodStart)} — ${fmt(periodEnd)}`;
 }
+
+/** من بداية أسبوع الرواتب (السبت) حتى اليوم — لفتح تقرير دوام الموظف */
+export function employeeReportWeekToDateRange(reference = dayjs()): { fromDate: string; toDate: string } {
+  const today = reference.startOf("day");
+  const from = startOfPayrollWeek(today);
+  return {
+    fromDate: from.format("YYYY-MM-DD"),
+    toDate: today.format("YYYY-MM-DD")
+  };
+}
+
+export function buildEmployeeAttendanceReportHref(employeeId: string): string {
+  const { fromDate, toDate } = employeeReportWeekToDateRange();
+  const q = new URLSearchParams({
+    tab: "report",
+    employeeId,
+    from: fromDate,
+    to: toDate,
+    autoLoad: "1"
+  });
+  return `/ar/workforce/attendance/daily?${q.toString()}`;
+}

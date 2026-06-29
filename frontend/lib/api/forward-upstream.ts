@@ -49,4 +49,8 @@ export async function forwardRequestToUpstream(
         message: "تعذّر الاتصال بخادم Laravel",
         hint: "شغّل RUN.cmd وتأكد أن Laravel يعمل على المنفذ 8000",
         attempted: target
-      
+      },
+      { status: 503 }
+    );
+  }
+}

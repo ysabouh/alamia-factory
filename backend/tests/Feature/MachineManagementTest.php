@@ -119,4 +119,32 @@ class MachineManagementTest extends TestCase
             'status' => 'running',
         ]);
     }
+
+    public function test_can_upload_machine_image(): void
+    {
+        $user = $this->adminWithPermissions();
+        $type = MachineType::create(['code' => 'injection', 'name' => 'حقن', 'is_active' => true]);
+        $machine = Machine::create([
+            'machine_type_id' => $type->id,
+            'code' => 'IMG-01',
+            'name' => 'ماكينة صور',
+            'status' => 'stopped',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->postJson("/api/v1/machines/{$machine->id}/images", [
+            'image' => \Illuminate\Http\UploadedFile::fake()->image('machine.jpg'),
+            'isPrimary' => true,
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.isPrimary', true);
+
+        $machine->refresh();
+        $this->assertNotNull($machine->image_url);
+        $this->assertDatabaseHas('machine_images', [
+            'machine_id' => $machine->id,
+            'is_primary' => true,
+        ]);
+    }
 }

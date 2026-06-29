@@ -271,7 +271,17 @@ export function QualityInspectionWorkspace({ orderId, inspectionId, mode = inspe
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-border/60">
+        <div className="space-y-4">
+          {readOnly && inspectionId ? (
+            <Link
+              href={`/ar/production/orders/${orderId}?tab=quality`}
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
+            >
+              <ArrowRight className="h-4 w-4 translate-y-0.5" />
+              العودة إلى فحوصات الجودة
+            </Link>
+          ) : null}
+          <Card className="border-border/60">
           <CardHeader>
             <CardTitle className="text-base">
               {readOnly ? "نتائج الفحص" : isEditForm ? "تعديل نتائج الفحص" : "قائمة الفحص"}
@@ -447,6 +457,7 @@ export function QualityInspectionWorkspace({ orderId, inspectionId, mode = inspe
             ) : null}
           </CardContent>
         </Card>
+        </div>
       )}
     </div>
   );

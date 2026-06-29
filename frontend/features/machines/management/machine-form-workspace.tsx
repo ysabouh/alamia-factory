@@ -13,6 +13,7 @@ import {
 import {
   machinesApi,
   MachinesApiError,
+  type MachineImageJson,
   type MachinePayload,
   type MachineTypeJson
 } from "@/lib/api/machines-client";
@@ -23,9 +24,19 @@ export function MachineFormWorkspace({ machineId }: { machineId?: string }) {
 
   const [types, setTypes] = useState<MachineTypeJson[]>([]);
   const [initial, setInitial] = useState<ReturnType<typeof detailToFormValues> | undefined>();
+  const [images, setImages] = useState<MachineImageJson[]>([]);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const loadMachine = async (id: string) => {
+    const m = await machinesApi.show(id);
+    setInitial(detailToFormValues(m.data));
+    setImages(m.data.images ?? []);
+    setImageUrl(m.data.imageUrl);
+  };
 
   useEffect(() => {
     void (async () => {
@@ -34,8 +45,12 @@ export function MachineFormWorkspace({ machineId }: { machineId?: string }) {
         const typesRes = await machinesApi.listTypes({ isActive: true });
         setTypes(typesRes.data);
         if (machineId) {
-          const m = await machinesApi.show(machineId);
-          setInitial(detailToFormValues(m.data));
+          await loadMachine(machineId);
+        } else {
+          setInitial(undefined);
+          setImages([]);
+          setImageUrl(null);
+          setPendingImageFile(null);
         }
         setError(null);
       } catch (e) {
@@ -52,9 +67,15 @@ export function MachineFormWorkspace({ machineId }: { machineId?: string }) {
     try {
       if (isEdit && machineId) {
         await machinesApi.update(machineId, payload);
+        if (pendingImageFile) {
+          await machinesApi.uploadImage(machineId, pendingImageFile, { isPrimary: true });
+        }
         router.push(`/ar/machines/${machineId}` as Route);
       } else {
         const res = await machinesApi.create(payload);
+        if (pendingImageFile) {
+          await machinesApi.uploadImage(res.data.id, pendingImageFile, { isPrimary: true });
+        }
         router.push(`/ar/machines/${res.data.id}` as Route);
       }
     } catch (e) {
@@ -79,6 +100,12 @@ export function MachineFormWorkspace({ machineId }: { machineId?: string }) {
       <MachineForm
         types={types}
         initial={initial}
+        machineId={machineId}
+        images={images}
+        imageUrl={imageUrl}
+        pendingImageFile={pendingImageFile}
+        onPendingImageFileChange={setPendingImageFile}
+        onImagesChange={() => machineId && void loadMachine(machineId)}
         onSubmit={onSubmit}
         busy={busy}
         submitLabel={isEdit ? "حفظ التعديلات" : "إنشاء الماكينة"}

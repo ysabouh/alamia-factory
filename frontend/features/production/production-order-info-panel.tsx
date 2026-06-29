@@ -10,6 +10,7 @@ import {
   Factory,
   Layers,
   Package,
+  PackageCheck,
   Pencil,
   Save,
   User,
@@ -21,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WfmField, WfmInput, WfmSelect, WfmTextarea } from "@/components/workforce/atlas";
 import { moldTypeLabels } from "@/features/molds/management/mold-status-ui";
+import { ProductionOrderProgressCard, productionProgressPercent } from "@/features/production/production-order-progress-card";
 import { machinesApi } from "@/lib/api/machines-client";
 import { moldsApi, type MoldType } from "@/lib/api/molds-client";
 import {
@@ -47,6 +49,7 @@ type FormState = {
   productionDate: string;
   plannedQuantity: string;
   supervisorId: string;
+  productionManagerId: string;
   notes: string;
 };
 
@@ -76,6 +79,7 @@ export function ProductionOrderInfoPanel({ order, canManage, onSaved }: Props) {
     productionDate: order.productionDate ?? "",
     plannedQuantity: String(order.plannedQuantity),
     supervisorId: order.supervisorId ?? "",
+    productionManagerId: order.productionManagerId ?? "",
     notes: order.notes ?? ""
   });
 
@@ -88,6 +92,7 @@ export function ProductionOrderInfoPanel({ order, canManage, onSaved }: Props) {
       productionDate: order.productionDate ?? "",
       plannedQuantity: String(order.plannedQuantity),
       supervisorId: order.supervisorId ?? "",
+      productionManagerId: order.productionManagerId ?? "",
       notes: order.notes ?? ""
     });
   }, [order]);
@@ -140,7 +145,11 @@ export function ProductionOrderInfoPanel({ order, canManage, onSaved }: Props) {
     ? moldTypeLabel(selectedMold?.moldType)
     : moldTypeLabel(order.moldType);
 
-  const pct = Math.min(100, Math.round((order.producedQuantity / Math.max(1, order.plannedQuantity)) * 100));
+  const pct = productionProgressPercent(order.producedQuantity, order.plannedQuantity);
+  const scrapQuantity = useMemo(
+    () => order.logs.reduce((sum, log) => sum + (log.scrapQuantity ?? 0), 0),
+    [order.logs]
+  );
 
   const save = async () => {
     setBusy(true);
@@ -154,6 +163,7 @@ export function ProductionOrderInfoPanel({ order, canManage, onSaved }: Props) {
         productionDate: form.productionDate || undefined,
         plannedQuantity: Number(form.plannedQuantity) || order.plannedQuantity,
         supervisorId: form.supervisorId || undefined,
+        productionManagerId: form.productionManagerId || undefined,
         notes: form.notes || undefined
       });
       setEditing(false);
@@ -174,6 +184,7 @@ export function ProductionOrderInfoPanel({ order, canManage, onSaved }: Props) {
       productionDate: order.productionDate ?? "",
       plannedQuantity: String(order.plannedQuantity),
       supervisorId: order.supervisorId ?? "",
+      productionManagerId: order.productionManagerId ?? "",
       notes: order.notes ?? ""
     });
     setEditing(false);
@@ -248,20 +259,15 @@ export function ProductionOrderInfoPanel({ order, canManage, onSaved }: Props) {
               ) : null}
             </div>
           </div>
-          <div className="min-w-[200px] space-y-2">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>التقدم</span>
-              <span>
-                {order.producedQuantity.toLocaleString("ar")} / {order.plannedQuantity.toLocaleString("ar")}
-              </span>
-            </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-orange-100">
-              <div className="h-full rounded-full bg-gradient-to-l from-orange-500 to-amber-400" style={{ width: `${pct}%` }} />
-            </div>
-            <p className="text-end text-sm font-semibold text-orange-700">{pct}%</p>
-          </div>
         </CardContent>
       </Card>
+
+      <ProductionOrderProgressCard
+        produced={order.producedQuantity}
+        planned={order.plannedQuantity}
+        status={order.status}
+        scrapQuantity={scrapQuantity}
+      />
 
       <div className="grid gap-4 md:grid-cols-3">
         <HighlightCard
@@ -363,6 +369,12 @@ export function ProductionOrderInfoPanel({ order, canManage, onSaved }: Props) {
               order.plannedQuantity.toLocaleString("ar")
             )}
           </DetailItem>
+          <DetailItem icon={PackageCheck} label="الكمية المنجزة">
+            <span className={cn("tabular-nums", order.producedQuantity > order.plannedQuantity && "text-amber-700")}>
+              {order.producedQuantity.toLocaleString("ar")}
+            </span>
+            <span className="ms-1 text-xs text-muted-foreground">({pct.toLocaleString("ar")}%)</span>
+          </DetailItem>
           <DetailItem icon={User} label="المشرف">
             {editing ? (
               <WfmSelect
@@ -380,7 +392,23 @@ export function ProductionOrderInfoPanel({ order, canManage, onSaved }: Props) {
               order.supervisorName ?? "—"
             )}
           </DetailItem>
-          <DetailItem icon={Cog} label="مدير الإنتاج">{order.productionManagerName ?? "—"}</DetailItem>
+          <DetailItem icon={Cog} label="مدير الإنتاج">
+            {editing ? (
+              <WfmSelect
+                value={form.productionManagerId}
+                onChange={(e) => setForm((f) => ({ ...f, productionManagerId: e.target.value }))}
+              >
+                <option value="">— اختر مدير الإنتاج —</option>
+                {employees.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                  </option>
+                ))}
+              </WfmSelect>
+            ) : (
+              order.productionManagerName ?? "—"
+            )}
+          </DetailItem>
           <DetailItem icon={Clock} label="بداية التشغيل">
             {order.startTime ? new Date(order.startTime).toLocaleString("ar") : "—"}
           </DetailItem>

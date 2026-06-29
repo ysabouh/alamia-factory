@@ -25,22 +25,27 @@ trait SerializesWorkOrders
             'productId' => (string) $order->product_id,
             'productCode' => $order->product?->product_code ?? $order->product?->code,
             'productName' => $order->product?->product_name_ar ?? $order->product?->name,
+            'productImageUrl' => $this->primaryEntityImageUrl($order->product),
             'productionDate' => $order->production_date?->toDateString(),
             'machineId' => $order->machine_id ? (string) $order->machine_id : null,
             'machineCode' => $order->machine?->code,
             'machineName' => $order->machine?->name,
+            'machineBrand' => $order->machine?->brand,
+            'machineModel' => $order->machine?->model,
+            'machineImageUrl' => $this->primaryEntityImageUrl($order->machine),
             'machineTypeId' => $order->machine?->machine_type_id ? (string) $order->machine->machine_type_id : null,
             'machineTypeName' => $order->machine?->type?->name ?? $order->machine?->type?->code,
             'moldId' => $order->mold_id ? (string) $order->mold_id : null,
             'moldCode' => $order->mold?->code,
             'moldName' => $order->mold?->name,
+            'moldImageUrl' => $this->primaryEntityImageUrl($order->mold),
             'moldType' => $order->mold?->mold_type?->value ?? $order->mold?->mold_type,
             'shiftId' => $order->shift_id ? (string) $order->shift_id : null,
             'shiftName' => $order->shift?->name,
             'supervisorId' => $order->supervisor_id ? (string) $order->supervisor_id : null,
-            'supervisorName' => $order->supervisor?->name,
+            'supervisorName' => $order->supervisor?->full_name ?? $order->supervisor?->name,
             'productionManagerId' => $order->production_manager_id ? (string) $order->production_manager_id : null,
-            'productionManagerName' => $order->productionManager?->name,
+            'productionManagerName' => $order->productionManager?->full_name ?? $order->productionManager?->name,
             'plannedQuantity' => $order->planned_quantity ?? $order->target_quantity,
             'producedQuantity' => $producedQty,
             'priority' => $order->priority,
@@ -118,5 +123,28 @@ trait SerializesWorkOrders
             'createdByName' => $log->creator?->name,
             'createdAt' => $log->created_at?->toIso8601String(),
         ];
+    }
+
+    protected function primaryEntityImageUrl(?object $entity): ?string
+    {
+        if ($entity === null) {
+            return null;
+        }
+
+        $direct = $entity->image_url ?? null;
+        if (! empty($direct)) {
+            return (string) $direct;
+        }
+
+        if (method_exists($entity, 'relationLoaded') && $entity->relationLoaded('images')) {
+            $images = $entity->images;
+            if ($images && $images->isNotEmpty()) {
+                $primary = $images->firstWhere('is_primary', true) ?? $images->first();
+
+                return $primary?->image_url;
+            }
+        }
+
+        return null;
     }
 }

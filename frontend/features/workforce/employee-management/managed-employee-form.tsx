@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import type { Route } from "next";
-import { useEffect, useId, useState } from "react";
-import { useRouter } from "next/navigation";
-import type { Control, FieldErrors, Resolver, UseFormRegister } from "react-hook-form";
-import { Controller, FormProvider, useForm } from "react-hook-form";
+import { useEffect, useId, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { Control, FieldErrors, FieldValues, Resolver, UseFormRegister } from "react-hook-form";
+import { Controller, FormProvider, useForm, useFormContext, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import { ImagePlus, Trash2, Upload } from "lucide-react";
@@ -19,12 +19,17 @@ import { useFactoryAuth } from "@/contexts/factory-auth-context";
 
 import { EmployeeSystemAccessCard } from "@/features/access-control/employee-system-access-card";
 
-import { defaultCurrencyId } from "./workforce-employee-mapper";
+import { EmployeeManagerPicker } from "./components/employee-manager-picker";
+import { SalaryCurrencyField } from "./components/salary-currency-field";
+import { defaultCurrencyId, EMPTY_WORKFORCE_CATALOG } from "./workforce-employee-mapper";
 import { useEmployeeRegistry } from "./employee-registry-context";
 import type { WorkforceCatalogJson } from "./workforce-api-types";
+import { workforceMastersApi } from "@/lib/api/workforce-masters-client";
+import type { DepartmentOrgPositionJson } from "./org-chart/org-chart-types";
 import {
-  employeeFormSchema,
-  fullEmployeeEditSchema,
+  employeeFormSchemaWithCatalog,
+  fullEmployeeEditSchemaWithCatalog,
+  isGeneralManagerJobRole,
   type EmployeeFormInput,
   type FullEmployeeEditInput,
   type ManagedEmployee
@@ -43,6 +48,8 @@ const emptyCreate: EmployeeFormInput = {
   address: "",
   hallId: "",
   departmentId: "",
+  orgPositionId: "",
+  reportsToId: "",
   jobRoleId: "",
   shiftId: "",
   salary: 4000,
@@ -191,6 +198,8 @@ function defaultsFromEmployee(e: ManagedEmployee): FullEmployeeEditInput {
     address: e.address,
     hallId: e.hallId ?? "",
     departmentId: e.departmentId ?? "",
+    orgPositionId: e.orgPositionId ?? "",
+    reportsToId: e.reportsToId ?? "",
     jobRoleId: e.jobRoleId ?? "",
     shiftId: e.shiftId ?? "",
     salary: e.salary,
@@ -211,15 +220,46 @@ function SharedFields({
   errors,
   mode,
   catalog,
-  control
+  control,
+  editEmployeeId
 }: {
   register: UseFormRegister<EmployeeFormInput & FullEmployeeEditInput>;
   errors: FieldErrors<EmployeeFormInput> | FieldErrors<FullEmployeeEditInput>;
   mode: "create" | "edit";
   catalog: WorkforceCatalogJson;
-  control: Control<Record<string, unknown>>;
+  control: Control<FieldValues>;
+  editEmployeeId?: string;
 }) {
   const e = errors as FieldErrors<FullEmployeeEditInput>;
+  const jobRoleId = useWatch({ control, name: "jobRoleId" }) ?? "";
+  const departmentId = useWatch({ control, name: "departmentId" }) ?? "";
+  const isGm = isGeneralManagerJobRole(String(jobRoleId), catalog);
+  const { setValue } = useFormContext<FieldValues>();
+  const [orgPositions, setOrgPositions] = useState<DepartmentOrgPositionJson[]>([]);
+  const [deptIsLeaf, setDeptIsLeaf] = useState(false);
+
+  useEffect(() => {
+    if (isGm) setValue("reportsToId", "");
+  }, [isGm, setValue]);
+
+  useEffect(() => {
+    if (!String(departmentId).trim()) {
+      setOrgPositions([]);
+      setDeptIsLeaf(false);
+      return;
+    }
+    void (async () => {
+      try {
+        const res = await workforceMastersApi.listOrgPositions(String(departmentId).trim());
+        setOrgPositions(res.data);
+        setDeptIsLeaf(res.meta.isLeaf);
+      } catch {
+        setOrgPositions([]);
+        setDeptIsLeaf(false);
+      }
+    })();
+  }, [departmentId]);
+
   const opt = (items: { id: string; name: string }[]) => (
     <>
       <option value="">— بدون / لاحقاً —</option>
@@ -295,12 +335,47 @@ function SharedFields({
           <WfmField id="departmentId" label="القسم" error={e.departmentId?.message}>
             <WfmSelect id="departmentId" {...register("departmentId")}>{opt(catalog.departments)}</WfmSelect>
           </WfmField>
+          {deptIsLeaf ? (
+            <WfmField id="orgPositionId" label="المنصب التنظيمي" hint="اختياري — للأقسام النهائية فقط" error={e.orgPositionId?.message}>
+              <WfmSelect id="orgPositionId" {...register("orgPositionId")}>
+                <option value="">— بدون منصب —</option>
+                {orgPositions.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.code})
+                  </option>
+                ))}
+              </WfmSelect>
+            </WfmField>
+          ) : null}
           <WfmField id="jobRoleId" label="الدور الوظيفي" error={e.jobRoleId?.message}>
             <WfmSelect id="jobRoleId" {...register("jobRoleId")}>{opt(catalog.jobRoles)}</WfmSelect>
           </WfmField>
           <WfmField id="shiftId" label="الوردية" error={e.shiftId?.message}>
             <WfmSelect id="shiftId" {...register("shiftId")}>{opt(catalog.shifts)}</WfmSelect>
           </WfmField>
+          {isGm ? (
+            <WfmField
+              id="reportsToId"
+              label="المدير المباشر"
+              hint="دور المدير العام لا يتطلب مديراً مباشراً"
+            >
+              <WfmInput id="reportsToId" value="—" disabled readOnly />
+            </WfmField>
+          ) : (
+            <WfmField id="reportsToId" label="المدير المباشر" required error={e.reportsToId?.message}>
+              <Controller
+                name="reportsToId"
+                control={control}
+                render={({ field }) => (
+                  <EmployeeManagerPicker
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    excludeEmployeeId={editEmployeeId}
+                  />
+                )}
+              />
+            </WfmField>
+          )}
         </div>
       </FormSection>
 
@@ -309,24 +384,17 @@ function SharedFields({
         className="border-atlas-rule/40 bg-atlas-paper/60 text-atlas-slate shadow-atlasCard [&_h3]:text-atlas-ink [&_p]:text-atlas-muted"
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <WfmField id="currencyId" label="عملة الراتب" required error={e.currencyId?.message}>
-            <WfmSelect id="currencyId" {...register("currencyId")}>
-              <option value="">— اختر العملة —</option>
-              {catalog.currencies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.code}) — 1 USD = {c.usdExchangeRate.toLocaleString("ar")} {c.symbol}
-                </option>
-              ))}
-            </WfmSelect>
-          </WfmField>
-          <WfmField id="salary" label="الراتب الأساسي (بالعملة المختارة)" required error={e.salary?.message}>
-            <WfmInput id="salary" type="number" step="0.01" {...register("salary")} monospace />
-          </WfmField>
+          <SalaryCurrencyField
+            control={control}
+            catalog={catalog}
+            currencyError={e.currencyId?.message}
+            salaryError={e.salary?.message}
+          />
           <WfmField id="hireDate" label="تاريخ التعيين" required error={e.hireDate?.message}>
             <WfmInput id="hireDate" type="date" {...register("hireDate")} />
           </WfmField>
           <WfmField id="photoUrl" label="صورة الموظف" error={e.photoUrl?.message} className="md:col-span-2">
-            <EmployeePhotoField control={control} />
+            <EmployeePhotoField control={control as unknown as Control<Record<string, unknown>>} />
           </WfmField>
           <WfmField id="notes" label="ملاحظات" error={e.notes?.message} className="md:col-span-2">
             <WfmTextarea id="notes" rows={5} placeholder="ملاحظات إدارية، شهادات، قيود…" {...register("notes")} />
@@ -369,28 +437,20 @@ function SharedFields({
 }
 
 export function ManagedEmployeeCreateForm() {
-  const router = useRouter();
   const { can } = useFactoryAuth();
   const { catalog, catalogLoading, catalogError, createEmployee, hydrated } = useEmployeeRegistry();
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const form = useForm<EmployeeFormInput>({
-    resolver: zodResolver(employeeFormSchema) as Resolver<EmployeeFormInput>,
-    defaultValues: emptyCreate
-  });
+  const activeCatalog = catalog ?? EMPTY_WORKFORCE_CATALOG;
 
-  useEffect(() => {
-    if (!catalog) return;
-    form.reset({
-      ...emptyCreate,
-      hallId: catalog.halls[0]?.id ?? "",
-      departmentId: catalog.departments[0]?.id ?? "",
-      jobRoleId: catalog.jobRoles[0]?.id ?? "",
-      shiftId: catalog.shifts[0]?.id ?? "",
-      currencyId: defaultCurrencyId(catalog)
-    });
-  }, [catalog, form]);
+  if (catalogLoading && !catalog) {
+    return (
+      <div className="mx-auto max-w-4xl animate-pulse space-y-6 rounded-sm border border-atlas-rule bg-atlas-paper/40 p-8">
+        <div className="h-8 w-1/3 rounded bg-atlas-canvas" />
+        <div className="h-40 rounded-lg bg-atlas-canvas/80" />
+      </div>
+    );
+  }
 
-  if (catalogLoading || !hydrated || !catalog) {
+  if (!hydrated && catalogLoading) {
     return (
       <div className="mx-auto max-w-4xl animate-pulse space-y-6 rounded-sm border border-atlas-rule bg-atlas-paper/40 p-8">
         <div className="h-8 w-1/3 rounded bg-atlas-canvas" />
@@ -412,6 +472,59 @@ export function ManagedEmployeeCreateForm() {
       </div>
     );
   }
+
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-4xl animate-pulse space-y-6 rounded-sm border border-atlas-rule bg-atlas-paper/40 p-8">
+          <div className="h-8 w-1/3 rounded bg-atlas-canvas" />
+          <div className="h-40 rounded-lg bg-atlas-canvas/80" />
+        </div>
+      }
+    >
+      <ManagedEmployeeCreateFormBody
+        catalog={activeCatalog}
+        catalogError={catalogError}
+        createEmployee={createEmployee}
+      />
+    </Suspense>
+  );
+}
+
+function ManagedEmployeeCreateFormBody({
+  catalog,
+  catalogError,
+  createEmployee
+}: {
+  catalog: WorkforceCatalogJson;
+  catalogError: string | null;
+  createEmployee: (data: EmployeeFormInput) => Promise<ManagedEmployee>;
+}) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const prefilledDepartmentId = searchParams.get("departmentId") ?? "";
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const resolvedDepartmentId =
+    prefilledDepartmentId && catalog.departments.some((d) => d.id === prefilledDepartmentId)
+      ? prefilledDepartmentId
+      : catalog.departments[0]?.id ?? "";
+  const form = useForm<EmployeeFormInput>({
+    resolver: zodResolver(employeeFormSchemaWithCatalog(catalog)) as Resolver<EmployeeFormInput>,
+    defaultValues: {
+      ...emptyCreate,
+      hallId: catalog.halls[0]?.id ?? "",
+      departmentId: resolvedDepartmentId,
+      jobRoleId: catalog.jobRoles[0]?.id ?? "",
+      shiftId: catalog.shifts[0]?.id ?? "",
+      currencyId: defaultCurrencyId(catalog)
+    }
+  });
+
+  useEffect(() => {
+    if (resolvedDepartmentId) {
+      form.setValue("departmentId", resolvedDepartmentId);
+    }
+  }, [form, resolvedDepartmentId]);
 
   return (
     <FormProvider {...form}>
@@ -444,7 +557,7 @@ export function ManagedEmployeeCreateForm() {
           errors={form.formState.errors}
           mode="create"
           catalog={catalog}
-          control={form.control as unknown as Control<Record<string, unknown>>}
+          control={form.control as unknown as Control<FieldValues>}
         />
       </motion.form>
     </FormProvider>
@@ -458,20 +571,11 @@ export function ManagedEmployeeEditForm({
   employee: ManagedEmployee;
   onEmployeeUpdated?: (next: ManagedEmployee) => void;
 }) {
-  const router = useRouter();
   const { can } = useFactoryAuth();
   const { catalog, catalogLoading, catalogError, updateEmployee, hydrated } = useEmployeeRegistry();
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const form = useForm<FullEmployeeEditInput>({
-    resolver: zodResolver(fullEmployeeEditSchema) as Resolver<FullEmployeeEditInput>,
-    defaultValues: defaultsFromEmployee(employee)
-  });
+  const activeCatalog = catalog ?? EMPTY_WORKFORCE_CATALOG;
 
-  useEffect(() => {
-    form.reset(defaultsFromEmployee(employee));
-  }, [employee, form]);
-
-  if (catalogLoading || !hydrated || !catalog) {
+  if (catalogLoading && !catalog) {
     return (
       <div className="mx-auto max-w-4xl animate-pulse space-y-6 rounded-sm border border-atlas-rule bg-atlas-paper/40 p-8">
         <div className="h-8 w-1/3 rounded bg-atlas-canvas" />
@@ -491,6 +595,41 @@ export function ManagedEmployeeEditForm({
       </div>
     );
   }
+
+  return (
+    <ManagedEmployeeEditFormBody
+      employee={employee}
+      catalog={activeCatalog}
+      catalogError={catalogError}
+      updateEmployee={updateEmployee}
+      onEmployeeUpdated={onEmployeeUpdated}
+    />
+  );
+}
+
+function ManagedEmployeeEditFormBody({
+  employee,
+  catalog,
+  catalogError,
+  updateEmployee,
+  onEmployeeUpdated
+}: {
+  employee: ManagedEmployee;
+  catalog: WorkforceCatalogJson;
+  catalogError: string | null;
+  updateEmployee: (id: string, data: FullEmployeeEditInput) => Promise<ManagedEmployee>;
+  onEmployeeUpdated?: (next: ManagedEmployee) => void;
+}) {
+  const router = useRouter();
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const form = useForm<FullEmployeeEditInput>({
+    resolver: zodResolver(fullEmployeeEditSchemaWithCatalog(catalog)) as Resolver<FullEmployeeEditInput>,
+    defaultValues: defaultsFromEmployee(employee)
+  });
+
+  useEffect(() => {
+    form.reset(defaultsFromEmployee(employee));
+  }, [employee, form]);
 
   return (
     <FormProvider {...form}>
@@ -531,7 +670,8 @@ export function ManagedEmployeeEditForm({
           errors={form.formState.errors}
           mode="edit"
           catalog={catalog}
-          control={form.control as unknown as Control<Record<string, unknown>>}
+          control={form.control as unknown as Control<FieldValues>}
+          editEmployeeId={employee.id}
         />
       </motion.form>
     </FormProvider>

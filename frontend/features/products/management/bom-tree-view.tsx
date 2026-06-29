@@ -35,7 +35,7 @@ function BomTreeNodeRow({ node, depth = 0 }: { node: BomTreeNode; depth?: number
           <Badge variant="secondary">{componentTypeLabels[node.componentType] ?? node.componentType}</Badge>
         )}
         {node.wastePercentage ? <span className="text-xs text-amber-600">+{node.wastePercentage}% هدر</span> : null}
-        {node.isOptional ? <Badge variant="outline">اختياري</Badge> : null}
+        {"isOptional" in node && node.isOptional ? <Badge variant="outline">اختياري</Badge> : null}
       </div>
       {node.children?.map((child) => (
         <BomTreeNodeRow key={child.id} node={child} depth={depth + 1} />

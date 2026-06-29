@@ -6,6 +6,7 @@ use App\Interfaces\Http\Controllers\Api\V1\MachineController;
 use App\Interfaces\Http\Controllers\Api\V1\MoldController;
 use App\Interfaces\Http\Controllers\Api\V1\Molds\MoldImagesController;
 use App\Interfaces\Http\Controllers\Api\V1\Machines\MachineCountersController;
+use App\Interfaces\Http\Controllers\Api\V1\Machines\MachineImagesController;
 use App\Interfaces\Http\Controllers\Api\V1\Machines\MachineMaintenanceController;
 use App\Interfaces\Http\Controllers\Api\V1\Machines\MachineTypesController;
 use App\Interfaces\Http\Controllers\Api\V1\MaintenanceController;
@@ -22,6 +23,7 @@ use App\Interfaces\Http\Controllers\Api\V1\Quality\QualityChecklistController;
 use App\Interfaces\Http\Controllers\Api\V1\Quality\QualityInspectionController;
 use App\Interfaces\Http\Controllers\Api\V1\UsersController;
 use App\Interfaces\Http\Controllers\Api\V1\Masters\DepartmentsMasterController;
+use App\Interfaces\Http\Controllers\Api\V1\Masters\DepartmentOrgPositionsController;
 use App\Interfaces\Http\Controllers\Api\V1\Masters\HallsMasterController;
 use App\Interfaces\Http\Controllers\Api\V1\Masters\JobRolesMasterController;
 use App\Interfaces\Http\Controllers\Api\V1\Masters\CurrenciesMasterController;
@@ -32,6 +34,14 @@ use App\Interfaces\Http\Controllers\Api\V1\Attendance\OvertimeRequestsController
 use App\Interfaces\Http\Controllers\Api\V1\Attendance\PayrollsController;
 use App\Interfaces\Http\Controllers\Api\V1\WorkforceController;
 use App\Interfaces\Http\Controllers\Api\V1\WorkforceEmployeesController;
+use App\Interfaces\Http\Controllers\Api\V1\OrgChartController;
+use App\Interfaces\Http\Controllers\Api\V1\EmployeeCertificationsController;
+use App\Interfaces\Http\Controllers\Api\V1\Workflow\WorkflowTemplatesController;
+use App\Interfaces\Http\Controllers\Api\V1\Workflow\WorkflowInstancesController;
+use App\Interfaces\Http\Controllers\Api\V1\Workflow\WorkflowTasksController;
+use App\Interfaces\Http\Controllers\Api\V1\Workflow\WorkflowDashboardController;
+use App\Interfaces\Http\Controllers\Api\V1\Workflow\WorkflowIntegrationRequestsController;
+use App\Interfaces\Http\Controllers\Api\V1\DirectTasks\DirectTasksController;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -67,6 +77,17 @@ Route::middleware('auth:sanctum')->group(function () use ($publicWorkforceRead):
         Route::get('workforce/meta', [WorkforceController::class, 'meta'])->middleware('can:workforce.view');
     }
     Route::patch('workforce/employees/{employee}/placement', [WorkforceController::class, 'updatePlacement'])->middleware('can:workforce.manage_placement');
+    Route::get('workforce/org-chart/factory-settings', [OrgChartController::class, 'factorySettings'])->middleware('can:workforce.view');
+    Route::patch('workforce/org-chart/factory-settings', [OrgChartController::class, 'updateFactorySettings'])->middleware('can:workforce.manage_masters');
+    Route::get('workforce/org-chart', [OrgChartController::class, 'index'])->middleware('can:workforce.view');
+    Route::get('workforce/org-chart/settings', [OrgChartController::class, 'settings'])->middleware('can:workforce.view');
+    Route::patch('workforce/org-chart/settings', [OrgChartController::class, 'updateSettings'])->middleware('can:workforce.manage_employees');
+    Route::patch('workforce/org-chart/positions', [OrgChartController::class, 'updatePositions'])->middleware('can:workforce.manage_employees');
+    Route::post('workforce/org-chart/positions/reset', [OrgChartController::class, 'resetPositions'])->middleware('can:workforce.manage_employees');
+    Route::patch('workforce/employees/{employee}/reporting', [OrgChartController::class, 'updateReporting'])->middleware('can:workforce.manage_employees');
+    Route::get('workforce/employees/{employee}/certifications', [EmployeeCertificationsController::class, 'index'])->middleware('can:workforce.view');
+    Route::post('workforce/employees/{employee}/certifications', [EmployeeCertificationsController::class, 'store'])->middleware('can:workforce.manage_employees');
+    Route::delete('workforce/employees/{employee}/certifications/{certification}', [EmployeeCertificationsController::class, 'destroy'])->middleware('can:workforce.manage_employees');
 
     Route::prefix('workforce/masters')->group(function (): void {
         $read = 'can:workforce.view';
@@ -79,12 +100,19 @@ Route::middleware('auth:sanctum')->group(function () use ($publicWorkforceRead):
         Route::patch('halls/{hall}/activate', [HallsMasterController::class, 'activate'])->middleware($write);
         Route::patch('halls/{hall}/deactivate', [HallsMasterController::class, 'deactivate'])->middleware($write);
 
+        Route::get('departments/tree', [DepartmentsMasterController::class, 'tree'])->middleware($read);
         Route::get('departments', [DepartmentsMasterController::class, 'index'])->middleware($read);
         Route::get('departments/{department}', [DepartmentsMasterController::class, 'show'])->middleware($read);
         Route::post('departments', [DepartmentsMasterController::class, 'store'])->middleware($write);
         Route::patch('departments/{department}', [DepartmentsMasterController::class, 'update'])->middleware($write);
         Route::patch('departments/{department}/activate', [DepartmentsMasterController::class, 'activate'])->middleware($write);
         Route::patch('departments/{department}/deactivate', [DepartmentsMasterController::class, 'deactivate'])->middleware($write);
+
+        Route::get('departments/{department}/org-positions', [DepartmentOrgPositionsController::class, 'index'])->middleware($read);
+        Route::post('departments/{department}/org-positions', [DepartmentOrgPositionsController::class, 'store'])->middleware($write);
+        Route::get('departments/{department}/org-positions/{orgPosition}', [DepartmentOrgPositionsController::class, 'show'])->middleware($read);
+        Route::patch('departments/{department}/org-positions/{orgPosition}', [DepartmentOrgPositionsController::class, 'update'])->middleware($write);
+        Route::delete('departments/{department}/org-positions/{orgPosition}', [DepartmentOrgPositionsController::class, 'destroy'])->middleware($write);
 
         Route::get('job-roles', [JobRolesMasterController::class, 'index'])->middleware($read);
         Route::get('job-roles/{jobRole}', [JobRolesMasterController::class, 'show'])->middleware($read);
@@ -172,7 +200,12 @@ Route::middleware('auth:sanctum')->group(function () use ($publicWorkforceRead):
         Route::get('{machine}/maintenance-actions', [MachineMaintenanceController::class, 'actions'])->middleware('can:machines.view');
         Route::post('{machine}/tickets/{ticket}/actions', [MachineMaintenanceController::class, 'storeAction'])->middleware('can:machines.manage_maintenance');
         Route::get('{machine}/preventive-logs', [MachineMaintenanceController::class, 'preventiveLogs'])->middleware('can:machines.view');
+
+        Route::post('{machine}/images', [MachineImagesController::class, 'store'])->middleware('can:machines.manage');
     });
+
+    Route::delete('machine-images/{machineImage}', [MachineImagesController::class, 'destroy'])->middleware('can:machines.manage');
+    Route::patch('machine-images/{machineImage}/primary', [MachineImagesController::class, 'setPrimary'])->middleware('can:machines.manage');
 
     Route::prefix('products')->group(function (): void {
         Route::get('masters', [ProductController::class, 'masters'])->middleware('can:products.view');
@@ -258,6 +291,10 @@ Route::middleware('auth:sanctum')->group(function () use ($publicWorkforceRead):
 
     Route::get('downtime/reasons', [MachineDowntimeController::class, 'reasons'])->middleware('can:production.record');
     Route::patch('machine-downtimes/{machineDowntime}', [MachineDowntimeController::class, 'update'])->middleware('can:production.execute');
+    Route::post('machine-downtimes/{machineDowntime}/photos', [MachineDowntimeController::class, 'storePhoto'])->middleware('can:production.execute');
+    Route::post('machine-downtime-photos/{machineDowntimePhoto}/replace', [MachineDowntimeController::class, 'updatePhoto'])->middleware('can:production.execute');
+    Route::post('machine-downtime-photos/{machineDowntimePhoto}/delete', [MachineDowntimeController::class, 'destroyPhoto'])->middleware('can:production.execute');
+    Route::delete('machine-downtime-photos/{machineDowntimePhoto}', [MachineDowntimeController::class, 'destroyPhoto'])->middleware('can:production.execute');
     Route::post('machine-downtimes/{machineDowntime}/maintenance-request', [MachineDowntimeController::class, 'maintenanceRequest'])->middleware('can:maintenance.open_ticket');
 
     Route::get('quality/defects', [QualityInspectionController::class, 'defectsCatalog'])->middleware('can:quality.inspect');
@@ -277,4 +314,72 @@ Route::middleware('auth:sanctum')->group(function () use ($publicWorkforceRead):
 
     Route::get('maintenance/tickets', [MaintenanceController::class, 'index'])->middleware('can:maintenance.open_ticket');
     Route::post('maintenance/tickets', [MaintenanceController::class, 'store']);
+
+    Route::prefix('workflow')->group(function (): void {
+        Route::get('dashboard', [WorkflowDashboardController::class, 'index'])->middleware('can:workflow.dashboard.view');
+        Route::get('notifications', [WorkflowDashboardController::class, 'notifications'])->middleware('can:workflow.tasks.view_own');
+        Route::post('notifications/{notification}/read', [WorkflowDashboardController::class, 'markNotificationRead'])->middleware('can:workflow.tasks.view_own');
+
+        Route::get('subject-types', [WorkflowInstancesController::class, 'subjectTypes'])->middleware('can:workflow.instances.manage');
+
+        Route::get('templates', [WorkflowTemplatesController::class, 'index'])->middleware('can:workflow.templates.view');
+        Route::post('templates', [WorkflowTemplatesController::class, 'store'])->middleware('can:workflow.templates.manage');
+        Route::get('templates/{template}', [WorkflowTemplatesController::class, 'show'])->middleware('can:workflow.templates.view');
+        Route::patch('templates/{template}', [WorkflowTemplatesController::class, 'update'])->middleware('can:workflow.templates.manage');
+        Route::post('templates/{template}/clone', [WorkflowTemplatesController::class, 'clone'])->middleware('can:workflow.templates.manage');
+        Route::post('templates/{template}/archive', [WorkflowTemplatesController::class, 'archive'])->middleware('can:workflow.templates.manage');
+        Route::post('templates/{template}/versions', [WorkflowTemplatesController::class, 'createVersion'])->middleware('can:workflow.templates.manage');
+        Route::get('versions/{version}', [WorkflowTemplatesController::class, 'showVersion'])->middleware('can:workflow.templates.view');
+        Route::post('versions/{version}/publish', [WorkflowTemplatesController::class, 'publishVersion'])->middleware('can:workflow.templates.manage');
+        Route::put('versions/{version}/designer', [WorkflowTemplatesController::class, 'saveDesigner'])->middleware('can:workflow.templates.manage');
+
+        Route::get('instances', [WorkflowInstancesController::class, 'index'])->middleware('can:workflow.instances.view_all');
+        Route::post('instances', [WorkflowInstancesController::class, 'store'])->middleware('can:workflow.instances.manage');
+        Route::get('instances/{instance}', [WorkflowInstancesController::class, 'show'])->middleware('can:workflow.instances.view_all');
+        Route::get('instances/{instance}/progress', [WorkflowInstancesController::class, 'progress'])->middleware('can:workflow.instances.view_all');
+        Route::get('instances/{instance}/graph', [WorkflowInstancesController::class, 'graph'])->middleware('can:workflow.instances.view_all');
+        Route::get('instances/{instance}/timeline', [WorkflowInstancesController::class, 'timeline'])->middleware('can:workflow.instances.view_all');
+        Route::post('instances/{instance}/return', [WorkflowInstancesController::class, 'returnStage'])->middleware('can:workflow.instances.manage');
+
+        Route::get('tasks', [WorkflowTasksController::class, 'index'])->middleware('can:workflow.instances.view_all');
+        Route::get('tasks/my', [WorkflowTasksController::class, 'my'])->middleware('can:workflow.tasks.view_own');
+        Route::get('tasks/{task}', [WorkflowTasksController::class, 'show'])->middleware('can:workflow.tasks.view_own');
+        Route::post('tasks/{task}/accept', [WorkflowTasksController::class, 'accept'])->middleware('can:workflow.tasks.execute');
+        Route::post('tasks/{task}/reject', [WorkflowTasksController::class, 'reject'])->middleware('can:workflow.tasks.execute');
+        Route::post('tasks/{task}/clarify', [WorkflowTasksController::class, 'clarify'])->middleware('can:workflow.tasks.execute');
+        Route::post('tasks/{task}/comment', [WorkflowTasksController::class, 'comment'])->middleware('can:workflow.tasks.execute');
+        Route::post('tasks/{task}/complete', [WorkflowTasksController::class, 'complete'])->middleware('can:workflow.tasks.execute');
+        Route::post('tasks/{task}/gateway-path', [WorkflowTasksController::class, 'chooseGatewayPath'])->middleware('can:workflow.tasks.execute');
+        Route::post('tasks/{task}/approve', [WorkflowTasksController::class, 'approve'])->middleware('can:workflow.instances.manage');
+        Route::post('tasks/{task}/assign', [WorkflowTasksController::class, 'assign'])->middleware('can:workflow.instances.manage');
+        Route::post('tasks/{task}/attachments', [WorkflowTasksController::class, 'uploadAttachment'])->middleware('can:workflow.tasks.execute');
+
+        Route::get('purchase-requests', [WorkflowIntegrationRequestsController::class, 'purchaseIndex'])->middleware('can:workflow.instances.view_all');
+        Route::post('purchase-requests', [WorkflowIntegrationRequestsController::class, 'purchaseStore'])->middleware('can:workflow.instances.manage');
+        Route::get('inventory-transfers', [WorkflowIntegrationRequestsController::class, 'inventoryIndex'])->middleware('can:workflow.instances.view_all');
+        Route::post('inventory-transfers', [WorkflowIntegrationRequestsController::class, 'inventoryStore'])->middleware('can:workflow.instances.manage');
+        Route::get('hr-requests', [WorkflowIntegrationRequestsController::class, 'hrIndex'])->middleware('can:workflow.instances.view_all');
+        Route::post('hr-requests', [WorkflowIntegrationRequestsController::class, 'hrStore'])->middleware('can:workflow.instances.manage');
+        Route::get('supplier-requests', [WorkflowIntegrationRequestsController::class, 'supplierIndex'])->middleware('can:workflow.instances.view_all');
+        Route::post('supplier-requests', [WorkflowIntegrationRequestsController::class, 'supplierStore'])->middleware('can:workflow.instances.manage');
+        Route::get('customer-complaints', [WorkflowIntegrationRequestsController::class, 'complaintIndex'])->middleware('can:workflow.instances.view_all');
+        Route::post('customer-complaints', [WorkflowIntegrationRequestsController::class, 'complaintStore'])->middleware('can:workflow.instances.manage');
+    });
+
+    Route::prefix('direct-tasks')->group(function (): void {
+        Route::get('checklist-templates', [DirectTasksController::class, 'checklistTemplates'])->middleware('can:direct_tasks.view');
+        Route::get('drafts/current', [DirectTasksController::class, 'currentDraft'])->middleware('can:direct_tasks.create');
+        Route::patch('drafts/current', [DirectTasksController::class, 'saveDraft'])->middleware('can:direct_tasks.create');
+        Route::delete('drafts/current', [DirectTasksController::class, 'deleteDraft'])->middleware('can:direct_tasks.create');
+        Route::get('/', [DirectTasksController::class, 'index'])->middleware('can:direct_tasks.view');
+        Route::post('/', [DirectTasksController::class, 'store'])->middleware('can:direct_tasks.create');
+        Route::get('{directTask}', [DirectTasksController::class, 'show'])->middleware('can:direct_tasks.view');
+        Route::post('{directTask}/attachments', [DirectTasksController::class, 'uploadAttachment'])->middleware('can:direct_tasks.view');
+        Route::post('{directTask}/start', [DirectTasksController::class, 'start'])->middleware('can:direct_tasks.execute');
+        Route::post('{directTask}/pause', [DirectTasksController::class, 'pause'])->middleware('can:direct_tasks.execute');
+        Route::post('{directTask}/complete', [DirectTasksController::class, 'complete'])->middleware('can:direct_tasks.execute');
+        Route::post('{directTask}/submit-review', [DirectTasksController::class, 'submitForReview'])->middleware('can:direct_tasks.execute');
+        Route::patch('{directTask}/checklist/{checklistItem}', [DirectTasksController::class, 'updateChecklistItem'])->middleware('can:direct_tasks.execute');
+        Route::post('{directTask}/comments', [DirectTasksController::class, 'addComment'])->middleware('can:direct_tasks.execute');
+    });
 });

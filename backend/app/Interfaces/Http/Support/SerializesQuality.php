@@ -10,6 +10,7 @@ use App\Domain\Factory\Models\QualityInspectionDefect;
 use App\Domain\Factory\Models\QualityInspectionPhoto;
 use App\Domain\Factory\Models\QualityInspectionResult;
 use App\Domain\Factory\Models\MachineDowntime;
+use App\Domain\Factory\Models\MachineDowntimePhoto;
 use App\Domain\Factory\Models\DowntimeReason;
 
 trait SerializesQuality
@@ -152,10 +153,29 @@ trait SerializesQuality
             'endTime' => $downtime->end_time?->toIso8601String(),
             'downtimeMinutes' => $downtime->downtime_minutes,
             'downtimeReasonId' => $downtime->downtime_reason_id ? (string) $downtime->downtime_reason_id : null,
+            'reasonCode' => $downtime->reason?->code,
             'reasonName' => $downtime->reason?->name,
             'notes' => $downtime->notes,
+            'faultDescription' => $downtime->fault_description,
+            'repairMethod' => $downtime->repair_method,
             'maintenanceTicketId' => $downtime->maintenanceTicket?->id ? (string) $downtime->maintenanceTicket->id : null,
             'requestNo' => $downtime->maintenanceTicket?->request_no,
+            'photos' => $downtime->relationLoaded('photos')
+                ? $downtime->photos->map(fn (MachineDowntimePhoto $p) => $this->serializeDowntimePhoto($p))->values()->all()
+                : [],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function serializeDowntimePhoto(MachineDowntimePhoto $photo): array
+    {
+        return [
+            'id' => (string) $photo->id,
+            'filePath' => $photo->file_path,
+            'fileName' => $photo->file_name,
+            'uploadedAt' => $photo->uploaded_at?->toIso8601String(),
         ];
     }
 

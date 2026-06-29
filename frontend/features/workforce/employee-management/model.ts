@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { WorkforceCatalogJson } from "./workforce-api-types";
+
 export type EmployeeEmploymentStatus = "active" | "suspended" | "probation" | "terminated";
 export type EmployeeGender = "male" | "female" | "other";
 
@@ -47,6 +49,10 @@ export interface ManagedEmployee {
   /** Workforce API FK ids (decimal string) */
   hallId: string | null;
   departmentId: string | null;
+  orgPositionId: string | null;
+  orgPositionName: string | null;
+  reportsToId: string | null;
+  managerName: string | null;
   jobRoleId: string | null;
   shiftId: string | null;
   employeeStatusId: string | null;
@@ -67,6 +73,7 @@ export interface ManagedEmployee {
   bonusPoints: number;
   violations: number;
   annualLeaveBalance: number;
+  certifications: { id: string; name: string; issuer?: string | null; issuedAt?: string | null; expiresAt?: string | null }[];
   assignedMachines: string[];
   shiftHistory: ShiftHistoryEntry[];
   rewards: RewardEntry[];
@@ -117,6 +124,8 @@ export const employeeFormSchema = z.object({
   address: z.string().min(2, "مطلوب"),
   hallId: z.string().default(""),
   departmentId: z.string().default(""),
+  orgPositionId: z.string().default(""),
+  reportsToId: z.string().default(""),
   jobRoleId: z.string().default(""),
   shiftId: z.string().default(""),
   salary: z.coerce.number().min(0),
@@ -135,6 +144,39 @@ export const employeeEditExtensionSchema = z.object({
 });
 
 export const fullEmployeeEditSchema = employeeFormSchema.merge(employeeEditExtensionSchema);
+
+/** المدير العام (GM) أو أعلى مستوى — لا يحتاج مديراً مباشراً */
+export function isGeneralManagerJobRole(jobRoleId: string, catalog: WorkforceCatalogJson): boolean {
+  const role = catalog.jobRoles.find((r) => r.id === jobRoleId);
+  if (!role) return false;
+  return role.code.toUpperCase() === "GM" || role.roleLevel >= 10;
+}
+
+export function employeeFormSchemaWithCatalog(catalog: WorkforceCatalogJson) {
+  return employeeFormSchema.superRefine((data, ctx) => {
+    if (isGeneralManagerJobRole(data.jobRoleId, catalog)) return;
+    if (!data.reportsToId?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["reportsToId"],
+        message: "اختر المدير المباشر"
+      });
+    }
+  });
+}
+
+export function fullEmployeeEditSchemaWithCatalog(catalog: WorkforceCatalogJson) {
+  return fullEmployeeEditSchema.superRefine((data, ctx) => {
+    if (isGeneralManagerJobRole(data.jobRoleId, catalog)) return;
+    if (!data.reportsToId?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["reportsToId"],
+        message: "اختر المدير المباشر"
+      });
+    }
+  });
+}
 
 export type EmployeeFormInput = z.infer<typeof employeeFormSchema>;
 export type FullEmployeeEditInput = z.infer<typeof fullEmployeeEditSchema>;

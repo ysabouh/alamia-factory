@@ -33,6 +33,13 @@ export function nowDatetimeLocal() {
   return toDatetimeLocalValue(new Date());
 }
 
+export function isoToDatetimeLocal(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return toDatetimeLocalValue(date);
+}
+
 export function formatLogDatetime(value?: string | null) {
   if (!value) return "—";
   return new Date(value).toLocaleString("ar");

@@ -69,6 +69,17 @@ class DatabaseSeeder extends Seeder
             'payroll.view',
             'payroll.generate',
             'shifts.assign',
+            'workflow.templates.view',
+            'workflow.templates.manage',
+            'workflow.instances.manage',
+            'workflow.instances.view_all',
+            'workflow.tasks.view_own',
+            'workflow.tasks.execute',
+            'workflow.dashboard.view',
+            'direct_tasks.view',
+            'direct_tasks.create',
+            'direct_tasks.manage',
+            'direct_tasks.execute',
         ];
 
         $guard = 'web';
@@ -105,6 +116,8 @@ class DatabaseSeeder extends Seeder
             'attendance.record',
             'attendance.approve',
             'overtime.approve',
+            'direct_tasks.view',
+            'direct_tasks.execute',
         ]);
 
         Role::findOrCreate('hr_manager', $guard)->givePermissionTo([
@@ -120,12 +133,15 @@ class DatabaseSeeder extends Seeder
             'payroll.view',
             'payroll.generate',
             'shifts.assign',
+            'direct_tasks.view',
         ]);
 
         Role::findOrCreate('employee', $guard)->givePermissionTo([
             'attendance.view',
             'attendance.record',
             'overtime.request',
+            'direct_tasks.view',
+            'direct_tasks.execute',
         ]);
 
         $this->seedWorkforceReferenceGraph();
@@ -323,6 +339,9 @@ class DatabaseSeeder extends Seeder
         ] as [$name, $code]) {
             EmploymentStatus::firstOrCreate(['code' => $code], ['name' => $name]);
         }
+
+        $this->call(FactoryOrgChartSeeder::class);
+        $this->call(DirectTaskChecklistTemplateSeeder::class);
     }
 
     private function bootstrapWorkforcePeople(Employee $adminEmp): void
@@ -358,6 +377,8 @@ class DatabaseSeeder extends Seeder
         $injDept = Department::where('code', '=', 'DEPT-INJ-OPS')->first();
         $prodSup = JobRole::where('code', '=', 'ROLE-PROD-SUP')->firstOrFail();
         $opRole = JobRole::where('code', '=', 'ROLE-MACHINE-OP')->firstOrFail();
+        $maintRole = JobRole::where('code', '=', 'ROLE-MAINT-TECH')->first();
+        $maintDept = Department::where('code', '=', 'DEPT-MAINT')->first();
         $eveningShift = Shift::where('code', '=', 'SHIFT-EVENING')->firstOrFail();
 
         Employee::updateOrCreate(
@@ -411,5 +432,71 @@ class DatabaseSeeder extends Seeder
             'email' => 'khalil.demo@factory.local',
             'is_active' => true,
             ]);
+
+        Employee::updateOrCreate(
+            ['employee_number' => 'EMP-MAINT-01'],
+            [
+                'code' => 'EMP-MAINT-01',
+                'name' => 'سامر الحمادي',
+                'first_name' => 'سامر',
+                'last_name' => 'الحمادي',
+                'job_title' => 'فني صيانة',
+                'department' => 'الصيانة',
+                'hire_date' => '2021-04-10',
+                'hall_id' => $centralHall?->id,
+                'department_id' => $maintDept?->id,
+                'job_role_id' => $maintRole?->id,
+                'shift_id' => $morning->id,
+                'employment_status_id' => $active->id,
+                'basic_salary' => 950,
+                'gender' => 'ذكر',
+                'email' => 'samer.demo@factory.local',
+                'is_active' => true,
+            ]
+        );
+
+        $this->bootstrapDemoUsers();
+    }
+
+    private function bootstrapDemoUsers(): void
+    {
+        $demoAccounts = [
+            [
+                'email' => 'yasmeen.demo@factory.local',
+                'password' => 'Demo@2026',
+                'name' => 'ياسمين القحطاني',
+                'employee_number' => 'EMP-DEMO-SUP',
+                'role' => 'supervisor',
+            ],
+            [
+                'email' => 'khalil.demo@factory.local',
+                'password' => 'Demo@2026',
+                'name' => 'خليل المرعي',
+                'employee_number' => 'EMP-DEMO-OPS',
+                'role' => 'employee',
+            ],
+            [
+                'email' => 'samer.demo@factory.local',
+                'password' => 'Demo@2026',
+                'name' => 'سامر الحمادي',
+                'employee_number' => 'EMP-MAINT-01',
+                'role' => 'supervisor',
+            ],
+        ];
+
+        foreach ($demoAccounts as $account) {
+            $employee = Employee::query()->where('employee_number', $account['employee_number'])->first();
+            if (! $employee) {
+                continue;
+            }
+
+            $user = User::query()->firstOrNew(['email' => $account['email']]);
+            $user->name = $account['name'];
+            $user->employee_id = $employee->id;
+            $user->is_active = true;
+            $user->password = $account['password'];
+            $user->save();
+            $user->syncRoles([$account['role']]);
+        }
     }
 }

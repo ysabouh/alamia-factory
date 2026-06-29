@@ -22,6 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { WfmField, WfmInput, WfmSelect } from "@/components/workforce/atlas";
 import { moldTypeLabels } from "@/features/molds/management/mold-status-ui";
 import { ProductionOrderRowEditDialog } from "@/features/production/production-order-row-edit-dialog";
+import { RegistryEntityHoverPreview } from "@/features/production/registry-entity-hover-preview";
 import {
   canEditWorkOrder,
   workOrderStatusLabels,
@@ -226,40 +227,71 @@ export function ProductionOrdersRegistryWorkspace() {
                       ) : null}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-start gap-2">
-                        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-100 text-blue-700">
-                          <Package className="h-3.5 w-3.5" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">{wo.productName ?? "—"}</p>
-                          <p className="text-xs text-muted-foreground">{wo.productCode ?? "—"}</p>
+                      <RegistryEntityHoverPreview
+                        variant="product"
+                        title={wo.productName ?? wo.productCode ?? "—"}
+                        subtitle={wo.productCode ?? undefined}
+                        imageUrl={wo.productImageUrl}
+                        meta={[{ label: "الرمز", value: wo.productCode ?? "—" }]}
+                      >
+                        <div className="flex cursor-default items-start gap-2">
+                          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-100 text-blue-700">
+                            <Package className="h-3.5 w-3.5" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">{wo.productName ?? "—"}</p>
+                            <p className="text-xs text-muted-foreground">{wo.productCode ?? "—"}</p>
+                          </div>
                         </div>
-                      </div>
+                      </RegistryEntityHoverPreview>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-start gap-2">
-                        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-100 text-violet-700">
-                          <Factory className="h-3.5 w-3.5" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">{wo.machineName ?? wo.machineCode ?? "—"}</p>
-                          <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                            <Cog className="h-3 w-3" />
-                            {wo.machineTypeName ?? "—"}
-                          </p>
+                      <RegistryEntityHoverPreview
+                        variant="machine"
+                        title={wo.machineName ?? wo.machineCode ?? "—"}
+                        subtitle={wo.machineCode ?? undefined}
+                        imageUrl={wo.machineImageUrl}
+                        meta={[
+                          { icon: Cog, label: "النوع", value: wo.machineTypeName ?? "—" },
+                          ...(wo.machineBrand ? [{ label: "العلامة", value: wo.machineBrand }] : []),
+                          ...(wo.machineModel ? [{ label: "الموديل", value: wo.machineModel }] : [])
+                        ]}
+                      >
+                        <div className="flex cursor-default items-start gap-2">
+                          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-100 text-violet-700">
+                            <Factory className="h-3.5 w-3.5" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">{wo.machineName ?? wo.machineCode ?? "—"}</p>
+                            <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                              <Cog className="h-3 w-3" />
+                              {wo.machineTypeName ?? "—"}
+                            </p>
+                          </div>
                         </div>
-                      </div>
+                      </RegistryEntityHoverPreview>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-start gap-2">
-                        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-orange-100 text-orange-700">
-                          <Layers className="h-3.5 w-3.5" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">{wo.moldName ?? wo.moldCode ?? "—"}</p>
-                          <p className="text-xs text-muted-foreground">{moldTypeLabel(wo.moldType)}</p>
+                      <RegistryEntityHoverPreview
+                        variant="mold"
+                        title={wo.moldName ?? wo.moldCode ?? "—"}
+                        subtitle={wo.moldCode ?? undefined}
+                        imageUrl={wo.moldImageUrl}
+                        meta={[
+                          { label: "الرمز", value: wo.moldCode ?? "—" },
+                          { label: "النوع", value: moldTypeLabel(wo.moldType) }
+                        ]}
+                      >
+                        <div className="flex cursor-default items-start gap-2">
+                          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-orange-100 text-orange-700">
+                            <Layers className="h-3.5 w-3.5" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">{wo.moldName ?? wo.moldCode ?? "—"}</p>
+                            <p className="text-xs text-muted-foreground">{moldTypeLabel(wo.moldType)}</p>
+                          </div>
                         </div>
-                      </div>
+                      </RegistryEntityHoverPreview>
                     </TableCell>
                     <TableCell>
                       <div className="inline-flex items-center gap-1.5 text-sm">

@@ -9,13 +9,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WfmField, WfmInput, WfmSelect } from "@/components/workforce/atlas";
 import { BlowSpecFields } from "@/features/machines/management/blow-spec-fields";
 import { InjectionSpecFields } from "@/features/machines/management/injection-spec-fields";
+import { MachineFormImageField } from "@/features/machines/management/machine-form-image-field";
 import {
   emptyMachineForm,
   machineFormSchema,
   type MachineFormValues
 } from "@/features/machines/management/machine-form-schema";
 import { machineStatusLabels } from "@/features/machines/management/machine-status-ui";
-import type { MachineDetailJson, MachinePayload, MachineTypeJson } from "@/lib/api/machines-client";
+import type {
+  MachineDetailJson,
+  MachineImageJson,
+  MachinePayload,
+  MachineTypeJson
+} from "@/lib/api/machines-client";
 
 function stripEmpty(obj: Record<string, unknown> | undefined) {
   if (!obj) return undefined;
@@ -84,12 +90,24 @@ export function detailToFormValues(machine: MachineDetailJson): MachineFormValue
 export function MachineForm({
   types,
   initial,
+  machineId,
+  images,
+  imageUrl,
+  pendingImageFile,
+  onPendingImageFileChange,
+  onImagesChange,
   onSubmit,
   busy,
   submitLabel
 }: {
   types: MachineTypeJson[];
   initial?: MachineFormValues;
+  machineId?: string;
+  images?: MachineImageJson[];
+  imageUrl?: string | null;
+  pendingImageFile: File | null;
+  onPendingImageFileChange: (file: File | null) => void;
+  onImagesChange?: () => void;
   onSubmit: (payload: MachinePayload) => Promise<void>;
   busy?: boolean;
   submitLabel: string;
@@ -188,6 +206,23 @@ export function MachineForm({
             <input type="checkbox" disabled={busy} {...form.register("isActive")} />
             نشطة في السجل
           </label>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/60 bg-card/40">
+        <CardHeader>
+          <CardTitle>صورة الماكينة</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MachineFormImageField
+            machineId={machineId}
+            images={images}
+            imageUrl={imageUrl}
+            pendingFile={pendingImageFile}
+            onPendingFileChange={onPendingImageFileChange}
+            onImagesChange={onImagesChange}
+            disabled={busy}
+          />
         </CardContent>
       </Card>
 

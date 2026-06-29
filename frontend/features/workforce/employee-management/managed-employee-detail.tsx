@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 
 import { WfmStatusBadge, type WfmBadgeTone } from "@/components/workforce/atlas";
+
+import { EmployeeCertificationsPanel } from "./employee-certifications-panel";
 import { Button } from "@/components/ui/button";
 
 import { formatMoney, formatMoneyUsd } from "@/lib/currency/format-money";
@@ -207,6 +209,8 @@ export function ManagedEmployeeDetail({
               <p className="text-sm text-atlas-muted">لا توجد ماكينات مباشرة في السجل.</p>
             )}
           </section>
+
+          {!compact && <EmployeeCertificationsPanel employeeId={employee.id} />}
 
           <section className={cardClass}>
             <h3 className="mb-3 text-sm font-bold text-atlas-ink">سجل الورديات</h3>

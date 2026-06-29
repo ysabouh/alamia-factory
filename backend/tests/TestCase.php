@@ -10,7 +10,7 @@ abstract class TestCase extends BaseTestCase
 
     protected function setUp(): void
     {
-        $this->ensureTestingDatabaseExists();
         parent::setUp();
+        $this->ensureTestingDatabaseExists();
     }
 }

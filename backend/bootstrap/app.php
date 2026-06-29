@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
         $schedule->job(new \App\Jobs\MarkAbsentEmployeesJob)->dailyAt('01:00');
+        $schedule->command('direct-tasks:spawn-recurring')->everyFifteenMinutes();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(function (Request $request): ?string {

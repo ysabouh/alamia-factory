@@ -38,6 +38,7 @@ import {
   departmentFormFromRow,
   departmentFormToPayload,
   emptyDepartmentForm,
+  validateDepartmentForm,
   type DepartmentFormValues
 } from "@/features/workforce/masters/forms/department-form";
 import {
@@ -200,6 +201,13 @@ function MasterDataWorkspace<T extends { id: string; isActive: boolean }, F>({
 
   const saveForm = async () => {
     if (!canManage) return;
+    if (config.resource === "departments") {
+      const deptError = validateDepartmentForm(formValues as DepartmentFormValues);
+      if (deptError) {
+        setFormError(deptError);
+        return;
+      }
+    }
     setSaveBusy(true);
     setFormError(null);
     try {
@@ -485,7 +493,9 @@ const departmentsConfig: EntityConfig<DepartmentMaster, DepartmentFormValues> = 
   columns: [
     { header: "الرمز", className: "font-mono text-atlas-brand", cell: (r) => r.code },
     { header: "الاسم", cell: (r) => r.name },
-    { header: "القاعة", cell: (r) => r.hallName ?? r.hallCode ?? "—" }
+    { header: "القاعة", cell: (r) => r.hallName ?? r.hallCode ?? "—" },
+    { header: "مدير القسم", cell: (r) => r.managerName ?? "—" },
+    { header: "الشواغر", className: "font-mono", cell: (r) => r.vacancyCount ?? 0 }
   ]
 };
 
